@@ -1,0 +1,1979 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>モンスターぶつかり合戦</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d1226;
+    --bg2:#161c3a;
+    --panel:#1b2246;
+    --panel-line:#333f74;
+    --text:#eef1fb;
+    --muted:#8b96c2;
+    --red:#ff5470;
+    --blue:#3ec9ff;
+    --gold:#ffcb47;
+    --purple:#a56bff;
+    --green:#43e6a0;
+    --hp:#43e6a0;
+    --hp-low:#ff5470;
+    --en:#3ec9ff;
+    --el-fire:#ff6a45;
+    --el-ice:#6be3ff;
+    --el-thunder:#ffe14d;
+    --el-water:#4fb8ff;
+    --el-dark:#b98cff;
+    --el-light:#fff2b0;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; height:100%; background:var(--bg); overflow-x:hidden; overscroll-behavior:none;}
+  .grid-body,.hub-body,#screen-gacha,#screen-title,.overlay-card,.log-box{-webkit-overflow-scrolling:touch; touch-action:pan-y; overscroll-behavior-y:contain;}
+  .stage-row{touch-action:pan-x pan-y; -webkit-overflow-scrolling:touch;}
+  #screen-title{overflow-y:auto;}
+  body{
+    font-family:'DotGothic16', sans-serif;
+    color:var(--text);
+    display:flex; align-items:center; justify-content:center;
+  }
+  h1,h2,h3{margin:0; font-family:'DotGothic16', sans-serif; font-weight:400;}
+  #game{
+    width:100%; max-width:480px; height:100dvh; max-height:900px;
+    background:
+      radial-gradient(ellipse at 50% -10%, rgba(62,201,255,.14), transparent 55%),
+      linear-gradient(180deg, #161c3a 0%, #0d1226 100%);
+    position:relative; overflow-y:auto;
+    border-left:1px solid #262e58; border-right:1px solid #262e58;
+    display:flex; flex-direction:column;
+  }
+  .screen{flex:1; min-height:0; display:none; flex-direction:column; position:relative; z-index:1;}
+  .screen.active{display:flex;}
+  .hidden{display:none !important;}
+
+  .btn{
+    font-family:'DotGothic16', sans-serif; font-weight:700; font-size:1rem;
+    background:var(--panel); color:var(--text); border:2px solid var(--panel-line);
+    padding:13px 22px; border-radius:14px; cursor:pointer; letter-spacing:.03em;
+  }
+  .btn:active{transform:scale(.96);}
+  .btn.primary{background:var(--red); border-color:var(--red); color:#2a0a14;}
+  .btn.blue{background:var(--blue); border-color:var(--blue); color:#0a2432;}
+  .btn.gold{background:var(--gold); border-color:var(--gold); color:#332000;}
+  .btn:disabled{opacity:.35; pointer-events:none;}
+
+  /* ---------- TOPBAR ---------- */
+  .topbar{display:flex; align-items:center; justify-content:space-between; padding:14px 16px; flex-shrink:0;}
+  .back-btn{background:none; border:none; color:var(--muted); font-family:'DotGothic16',sans-serif; font-size:.9rem; font-weight:700; cursor:pointer; padding:6px 0;}
+  .coin-badge{display:flex; align-items:center; gap:6px; background:var(--panel); border:2px solid var(--panel-line); border-radius:999px; padding:6px 14px; font-weight:700; font-size:.92rem;}
+  .coin-badge .dot{width:16px; height:16px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #fff3c0, var(--gold) 60%, #a97e10); flex-shrink:0;}
+  .topbar-title{font-family:'DotGothic16',sans-serif; font-size:1rem; color:var(--text);}
+
+  /* ---------- TITLE ---------- */
+  #screen-title{align-items:center; justify-content:center; text-align:center; padding:24px;}
+  .title-logo{font-size:1.85rem; line-height:1.35; color:var(--text); text-shadow:0 3px 0 #000a, 0 0 22px rgba(62,201,255,.4);}
+  .title-logo .accent{color:var(--red);}
+  .title-sub{font-size:.78rem; letter-spacing:.2em; color:var(--blue); margin-top:10px; font-weight:700;}
+  .title-foot{position:absolute; bottom:18px; left:0; right:0; text-align:center; font-size:.65rem; color:#5b6699; letter-spacing:.05em;}
+
+  /* ---------- GACHA CAPSULE (pixel art) ---------- */
+  .machine-wrap{margin:22px 0; display:flex; justify-content:center;}
+  .vs-seg{display:flex; gap:8px; margin:2px 0 6px;}
+  .vs-seg button{flex:1; padding:10px 4px; border-radius:6px; border:2px solid var(--line,#2a3560); background:#141a38; color:#c9d2f0; font-family:'DotGothic16',sans-serif; font-size:.82rem;}
+  .vs-seg button.on{background:var(--gold,#ffcb47); color:#1a1a2a; border-color:var(--gold,#ffcb47);}
+  .title-capsule{display:flex; gap:14px; justify-content:center; align-items:flex-end;}
+  .title-capsule svg{width:92px; display:block;}
+  .gacha-capsule{width:150px;}
+  .gacha-capsule svg{width:100%; display:block;}
+  .gacha-capsule.shake{animation:capsuleshake .7s ease-in-out;}
+  @keyframes capsuleshake{
+    0%,100%{transform:rotate(0deg);}
+    15%{transform:rotate(-9deg);}
+    30%{transform:rotate(9deg);}
+    45%{transform:rotate(-9deg);}
+    60%{transform:rotate(9deg);}
+    75%{transform:rotate(-4deg);}
+    90%{transform:rotate(4deg);}
+  }
+
+  /* ---------- HUB ---------- */
+  #screen-hub .hub-body{flex:1; min-height:0; overflow-y:auto; padding:6px 20px 24px; display:flex; flex-direction:column; gap:14px;}
+  .hub-hero{text-align:center; padding:6px 0 4px;}
+  .hub-hero .count{font-family:'DotGothic16',sans-serif; font-size:1.5rem; color:var(--gold);}
+  .hub-hero .count-label{font-size:.72rem; color:var(--muted); letter-spacing:.05em;}
+  .menu-card{
+    display:flex; align-items:center; gap:14px; background:var(--panel); border:2px solid var(--panel-line);
+    border-radius:18px; padding:16px; cursor:pointer; text-align:left;
+  }
+  .menu-card:active{transform:scale(.98);}
+  .menu-icon{width:52px; height:52px; border-radius:14px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:1.6rem;}
+  .menu-icon.gacha{background:linear-gradient(160deg,#ff5470,#c92e4d);}
+  .menu-icon.battle{background:linear-gradient(160deg,#3ec9ff,#1f7fb0);}
+  .menu-icon.zukan{background:linear-gradient(160deg,#ffcb47,#c9910f);}
+  .menu-icon.scenario{background:linear-gradient(160deg,#43e6a0,#1f9a6a);}
+  .menu-icon.tournament{background:linear-gradient(160deg,#a56bff,#6b3ac9);}
+  .menu-icon.versus{background:linear-gradient(160deg,#ff9d47,#c9600f);}
+  .menu-text-title{font-weight:900; font-size:1.02rem;}
+  .menu-text-sub{font-size:.74rem; color:var(--muted); margin-top:3px; line-height:1.4;}
+
+  /* ---------- GACHA ---------- */
+  #screen-gacha{align-items:center; padding:6px 20px 24px; overflow-y:auto;}
+  .gacha-note{font-size:.8rem; color:var(--muted); text-align:center; margin:8px 0 4px; line-height:1.6;}
+  .gacha-cost{font-size:.78rem; color:var(--gold); text-align:center; font-weight:700; margin-bottom:6px;}
+
+  /* ---------- SELECT / COLLECTION GRID ---------- */
+  .grid-body{flex:1; min-height:0; overflow-y:auto; padding:4px 18px 20px;}
+  .char-list{display:flex; flex-direction:column; gap:10px; margin-top:6px;}
+  .stage-row{display:flex; gap:8px; overflow-x:auto; padding:2px 0 6px;}
+  .stage-card{flex:0 0 auto; width:78px; background:var(--panel); border:2px solid var(--panel-line); border-radius:10px; padding:6px; text-align:center; cursor:pointer;}
+  .stage-card.selected{border-color:var(--gold); box-shadow:0 0 0 2px rgba(255,203,71,.3);}
+  .stage-card.locked{opacity:.45; cursor:default;}
+  .stage-card svg{width:100%; border-radius:4px; display:block; margin-bottom:4px;}
+  .stage-card .stage-name{font-size:.64rem; font-weight:700;}
+  .stage-card .zukan-lock{width:100%; aspect-ratio:14/8; display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:#4a568e; margin-bottom:4px;}
+  .mini-char-card{flex:0 0 auto; width:74px; background:var(--panel); border:2px solid var(--panel-line); border-radius:10px; padding:6px; text-align:center; cursor:pointer;}
+  .mini-char-card.selected{border-color:var(--gold); box-shadow:0 0 0 2px rgba(255,203,71,.3);}
+  .mini-char-card .portrait-box{width:100%; height:56px; margin:0 auto 4px; padding:2px;}
+  .mini-char-card .char-name{font-size:.6rem; font-weight:700; line-height:1.25;}
+  .boss-badge{display:inline-block; font-size:.6rem; font-weight:900; color:#2a0a14; background:var(--gold); border-radius:999px; padding:2px 8px; margin-left:6px; vertical-align:middle;}
+  .char-card{
+    display:flex; align-items:center; gap:12px; background:var(--panel); border:2px solid var(--panel-line);
+    border-radius:14px; padding:10px; cursor:pointer; text-align:left;
+  }
+  .char-card.selected{border-color:var(--gold); box-shadow:0 0 0 2px rgba(255,203,71,.3);}
+  .portrait-box{width:58px; height:70px; flex-shrink:0; background:rgba(255,255,255,.04); border-radius:8px; padding:4px; box-sizing:border-box;}
+  .portrait-box svg{width:100%; height:100%; display:block;}
+  .char-name{font-weight:900; font-size:.98rem;}
+  .char-tags{display:flex; gap:5px; margin-top:4px; flex-wrap:wrap;}
+  .tag{font-size:.62rem; font-weight:700; padding:2px 7px; border-radius:999px; background:rgba(255,255,255,.08); color:var(--muted);}
+  .tag.stars{color:var(--gold); background:rgba(255,203,71,.12);}
+  .select-footer{padding:12px 18px 18px; flex-shrink:0;}
+
+  .zukan-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:6px;}
+  .zukan-slot{
+    background:var(--panel); border:2px solid var(--panel-line); border-radius:14px; padding:8px 6px 10px;
+    display:flex; flex-direction:column; align-items:center; cursor:pointer;
+  }
+  .zukan-slot.locked{opacity:.5;}
+  .zukan-portrait{width:56px; height:68px; margin-bottom:4px;}
+  .zukan-portrait svg{width:100%; height:100%; display:block;}
+  .zukan-lock{width:56px; height:68px; margin-bottom:4px; display:flex; align-items:center; justify-content:center; font-size:1.4rem; color:#4a568e;}
+  .zukan-name{font-size:.68rem; font-weight:700; text-align:center; line-height:1.3;}
+
+  /* ---------- BATTLE ---------- */
+  #screen-battle{overflow-y:auto;}
+  .stage-name{text-align:center; font-size:.7rem; letter-spacing:.2em; color:var(--muted); padding:8px 0 0; font-weight:700;}
+  .arena{flex:0 0 auto; height:26%; position:relative; display:flex; align-items:center; justify-content:space-evenly; overflow:hidden;
+    background:radial-gradient(ellipse at 50% 100%, rgba(62,201,255,.16), transparent 70%);}
+  .arena-bg{position:absolute; inset:0; z-index:0; opacity:.4;}
+  .arena-bg svg{width:100%; height:100%; display:block;}
+  .arena-portrait{position:relative; z-index:1; width:96px; height:116px; background:rgba(255,255,255,.04); border-radius:10px; padding:6px; box-sizing:border-box;}
+  .arena-portrait svg{width:100%; height:100%; display:block;}
+  #player-portrait{transform:scaleX(-1);}
+  .arena-portrait.shake{animation:shakeit .3s;}
+  @keyframes shakeit{0%,100%{transform:translateX(0);} 25%{transform:translateX(-8px) rotate(2deg);} 75%{transform:translateX(8px) rotate(-2deg);}}
+  #player-portrait.shake{animation:shakeitp .3s;}
+  @keyframes shakeitp{0%,100%{transform:scaleX(-1) translateX(0);} 25%{transform:scaleX(-1) translateX(-8px) rotate(2deg);} 75%{transform:scaleX(-1) translateX(8px) rotate(-2deg);}}
+  .arena-portrait.charged{animation:energyglow 1s ease-in-out infinite;}
+  @keyframes energyglow{
+    0%,100%{filter:drop-shadow(0 0 3px var(--blue)) drop-shadow(0 0 1px var(--blue));}
+    50%{filter:drop-shadow(0 0 12px var(--blue)) drop-shadow(0 0 4px var(--gold));}
+  }
+  .vs-mark{position:relative; z-index:1; font-family:'DotGothic16',sans-serif; font-size:.9rem; color:var(--gold); opacity:.8;}
+  .hitflash{position:absolute; top:50%; width:34px; height:34px; border-radius:50%; z-index:2;
+    transform:translate(-50%,-50%) scale(0); opacity:0; pointer-events:none;}
+  .hitflash.go{animation:flashit .28s ease-out;}
+  @keyframes flashit{0%{transform:translate(-50%,-50%) scale(.2); opacity:0;} 20%{transform:translate(-50%,-50%) scale(1.4); opacity:1;} 100%{transform:translate(-50%,-50%) scale(.4); opacity:0;}}
+  .hitflash.fire{background:radial-gradient(circle,#fff 0%,#ffcf5a 30%,#ff6a2e 60%,rgba(255,80,0,0) 75%);}
+  .hitflash.water{background:radial-gradient(circle,#eafcff 0%,#7fd6ff 40%,#1f7fa0 65%,rgba(31,127,160,0) 78%);}
+  .hitflash.bullet{background:radial-gradient(circle,#fff 0%,#ffe98a 35%,#ffcb47 55%,rgba(255,203,71,0) 72%);}
+  .hitflash.slash{background:linear-gradient(115deg, transparent 40%, #fff 48%, #ff5470 52%, transparent 60%);}
+  .hitflash.thunder{background:radial-gradient(circle,#fff 0%,#fff3b0 30%,#ffe14d 55%,rgba(255,225,77,0) 75%);}
+  .hitflash.blunt{background:radial-gradient(circle,#fff 0%,#e8d9a0 35%,#8a7a3a 60%,rgba(138,122,58,0) 76%);}
+
+  .combatants{padding:6px 18px 2px;}
+  .cbar-row{margin-bottom:8px;}
+  .cbar-top{display:flex; align-items:baseline; gap:6px; font-size:.72rem; margin-bottom:3px;}
+  .cbar-top #player-hp-text, .cbar-top #enemy-hp-text{margin-left:auto;}
+  .cbar-name{font-weight:900; font-size:.9rem;}
+  .side-tag{font-size:.6rem; font-weight:900; padding:2px 7px; border-radius:6px;}
+  .side-you{background:rgba(62,201,255,.18); color:var(--blue);}
+  .side-enemy{background:rgba(255,84,112,.18); color:var(--red);}
+  .seg-track{display:flex; gap:3px;}
+  .seg{flex:1; aspect-ratio:1/1.3; max-width:18px; background:#0a0e20; border:2px solid var(--panel-line); border-radius:3px;}
+  .seg.on-hp{background:linear-gradient(180deg,#7fe8bf,var(--hp)); border-color:var(--hp);}
+  .seg.on-hp.low{background:linear-gradient(180deg,#ff8ba0,var(--hp-low)); border-color:var(--hp-low);}
+
+  .log-box{margin:2px 18px; min-height:40px; max-height:64px; overflow-y:auto; background:rgba(0,0,0,.28);
+    border-top:2px solid var(--panel-line); border-bottom:2px solid var(--panel-line); padding:8px 10px; font-size:.82rem; line-height:1.6; color:#cdd4f2;}
+
+  .commands{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; padding:12px 18px 18px; flex-shrink:0;}
+  .cmd-btn{padding:14px 4px; border-radius:12px; font-weight:900; font-size:.86rem; border:2px solid var(--panel-line); background:var(--panel); color:var(--text); cursor:pointer;}
+  .cmd-btn:active{transform:scale(.95);}
+  .cmd-btn.atk{border-color:var(--red); }
+  .cmd-btn.spec{border-color:var(--blue);}
+  .cmd-btn.guard{border-color:var(--gold);}
+  .cmd-btn:disabled{opacity:.3; pointer-events:none;}
+  .cmd-sub{display:block; font-size:.6rem; font-weight:400; color:var(--muted); margin-top:2px;}
+
+  /* ---------- OVERLAYS ---------- */
+  .overlay{position:absolute; inset:0; z-index:20; background:rgba(6,9,22,.88); display:flex; align-items:center; justify-content:center; padding:24px;}
+  .overlay.hidden{display:none;}
+  .overlay-card{background:var(--panel); border:2px solid var(--panel-line); border-radius:20px; padding:26px 22px; text-align:center; width:100%; max-width:340px; max-height:100%; overflow-y:auto;}
+  .reveal-portrait{width:140px; height:170px; margin:6px auto 10px; opacity:0; transform:scale(.5);}
+  .reveal-portrait.show{opacity:1; transform:scale(1); transition:all .45s cubic-bezier(.34,1.56,.64,1);}
+  .reveal-portrait svg{width:100%; height:100%; display:block;}
+  .reveal-stars{font-size:1rem; color:var(--gold); margin-bottom:4px;}
+  .reveal-name{font-size:1.15rem; font-weight:900; margin-bottom:6px;}
+  .reveal-status{font-size:.82rem; color:var(--green); font-weight:700; margin-bottom:10px;}
+  .reveal-status.dup{color:var(--muted);}
+  .reveal-tagline{font-size:.78rem; color:var(--muted); line-height:1.6; margin-bottom:16px;}
+  .overlay-btns{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;}
+
+  .detail-portrait{width:140px; height:170px; margin:0 auto 10px;}
+  .detail-portrait svg{width:100%; height:100%; display:block;}
+  .detail-stats{text-align:left; background:rgba(255,255,255,.04); border-radius:12px; padding:12px 14px; margin:14px 0; font-size:.82rem; line-height:2;}
+  .detail-stats b{color:var(--gold);}
+  .detail-desc{font-size:.8rem; color:var(--muted); line-height:1.7; text-align:left; margin-bottom:16px;}
+
+  .result-title{font-size:1.3rem; margin-bottom:10px;}
+  .result-title.lose{color:var(--muted);}
+  .result-title.win{color:var(--gold);}
+  .result-line{font-size:.88rem; margin-bottom:8px; line-height:1.7;}
+  .result-line b{color:var(--gold);}
+  #screen-battle{overflow:hidden}
+  .bp-head{display:flex;align-items:center;justify-content:space-between;padding:3px 10px 1px;gap:6px;flex-shrink:0}
+  .bp-head .stage-name{padding:0;text-align:left;letter-spacing:.05em;font-size:.66rem}
+  .bp-tg{display:flex;gap:5px}
+  .bp-sm{font-family:inherit;font-size:.62rem;padding:4px 9px;border-radius:12px;border:none;background:#c9b08a;color:#2a1a0e;font-weight:700;cursor:pointer}
+  .bp-sm.off{opacity:.45}.bp-sm.q{background:var(--gold)}
+  #bp-wrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+  #bump-cv{display:block;image-rendering:pixelated;box-sizing:border-box;border:4px solid #0d0818;border-radius:8px;touch-action:none;user-select:none;-webkit-user-select:none}
+  #bp-msg:empty{display:none}
+  #bp-msg{flex-shrink:0;font-size:.64rem;line-height:1.3;padding:0 12px 3px;text-align:center;color:var(--text)}
+  *{font-weight:400!important;-webkit-font-smoothing:none;text-rendering:optimizeSpeed}
+  .btn,.menu-card,.char-card,.overlay-card,.zukan-slot,.mini-char-card,.back-btn,.coin-badge,.tag,.bp-sm{border-radius:0!important}
+  .menu-card,.char-card,.overlay-card,.zukan-slot{box-shadow:4px 4px 0 #05081a}
+  .btn{box-shadow:0 4px 0 rgba(0,0,0,.45)}
+
+  #bp-kbhint{display:none;font-size:.68rem;color:var(--muted);text-align:center;padding:2px 6px 4px;line-height:1.4}
+  @media (hover:hover) and (pointer:fine){#bp-kbhint{display:block}}
+</style>
+</head>
+<body>
+<div id="game">
+
+  <!-- ===== TITLE ===== -->
+  <div id="screen-title" class="screen active">
+    <div class="title-logo">ぶつかり<span class="accent">モンスターズ</span></div>
+    <div class="title-sub">たまごをかえして、ロボをつくって、ぶつけあえ！</div>
+    <div class="machine-wrap">
+      
+    </div>
+    <button class="btn primary" id="btn-start" style="margin-top:10px; padding:16px 40px; font-size:1.05rem;">はじめる</button>
+    <div class="title-foot">たまごから、あなただけの なかまを そだてよう</div>
+  </div>
+
+  <!-- ===== HUB ===== -->
+  <div id="screen-hub" class="screen">
+    <div class="topbar">
+      <span class="topbar-title">ぶつかりモンスターズ</span>
+      <button class="back-btn" id="btn-settings" title="せってい">⚙️ せってい</button>
+      <div class="coin-badge"><span class="dot"></span><span id="hub-coins">0</span></div>
+    </div>
+    <div class="hub-body">
+      <div style="display:flex;gap:6px;justify-content:flex-end;"><button class="bp-sm" data-k="bgm"></button><button class="bp-sm" data-k="se"></button></div>
+      <div class="hub-hero">
+        <div class="count" id="hub-owned-count">0 / 12</div>
+        <div class="count-label">あつめた かず</div>
+      </div>
+      <div class="menu-card" id="card-egg">
+        <div>
+          <div class="menu-text-title">たまごをかえす</div>
+          <div class="menu-text-sub">おかねで たまごを かえして、モンスターの なかまを ふやそう</div>
+        </div>
+      </div>
+      <div class="menu-card" id="card-robo">
+        <div>
+          <div class="menu-text-title">ロボをつくる</div>
+          <div class="menu-text-sub">おかねで ロボを つくって、ロボットの なかまを ふやそう</div>
+        </div>
+      </div>
+      <div class="menu-card" id="card-battle">
+        <div>
+          <div class="menu-text-title">バトルにいどむ</div>
+          <div class="menu-text-sub">あいてを たおすと おかねが もらえて、かった あいては なかまにできる</div>
+        </div>
+      </div>
+      <div class="menu-card" id="card-zukan">
+        <div>
+          <div class="menu-text-title">ずかんをみる</div>
+          <div class="menu-text-sub">あつめた モンスターと ロボットの すがたを みられる</div>
+        </div>
+      </div>
+      <div class="menu-card" id="card-scenario">
+        <div>
+          <div class="menu-text-title">ストーリーモード</div>
+          <div class="menu-text-sub">いろんな ばしょの つよい あいてを たおして、さいごの「まおう」に ちょうせん</div>
+        </div>
+      </div>
+      <div class="menu-card" id="card-tournament">
+        <div>
+          <div class="menu-text-title">トーナメントモード</div>
+          <div class="menu-text-sub">1たいで 5かいせんを かちぬこう。ぜんしょうで ごほうび</div>
+        </div>
+      </div>
+      <div class="menu-card" id="card-versus">
+        <div>
+          <div class="menu-text-title">たいせんモード</div>
+          <div class="menu-text-sub">CPUとも ふたりでも、すきな キャラで たいせん</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== GACHA ===== -->
+  <div id="screen-gacha" class="screen">
+    <div class="topbar">
+      <button class="back-btn" data-back="hub">← もどる</button>
+      <div class="coin-badge"><span class="dot"></span><span id="gacha-coins">0</span></div>
+    </div>
+    <div class="gacha-heading" id="gacha-heading" style="font-family:'DotGothic16',sans-serif; color:var(--gold); text-align:center; font-size:1rem; margin-top:6px;"></div>
+    <div class="machine-wrap">
+      <div class="gacha-capsule" id="gacha-capsule"></div>
+    </div>
+    <div class="gacha-cost">1かい 30円</div>
+    <div class="gacha-note" id="gacha-note"></div>
+    <button class="btn primary" id="btn-gacha-spin" style="margin:14px auto 0; display:block;">たまごを かえす</button>
+  </div>
+
+  <!-- ===== BATTLE SELECT ===== -->
+  <div id="screen-select" class="screen">
+    <div class="topbar">
+      <button class="back-btn" id="select-back-btn" data-back="hub">← もどる</button>
+      <span class="topbar-title" id="select-title">バトル準備</span>
+    </div>
+    <div class="grid-body">
+      <div id="stage-select-wrap">
+        <div style="font-size:.72rem; color:var(--muted); margin:2px 0 4px;">ステージを選ぶ（系列との相性でステータス変化）</div>
+        <div class="stage-row" id="stage-list"></div>
+      </div>
+      <div id="forced-stage-label" style="display:none; font-size:.78rem; color:var(--gold); font-weight:700; margin:4px 0 2px;"></div>
+      <div style="font-size:.72rem; color:var(--muted); margin:14px 0 4px;">出撃するキャラを選ぶ</div>
+      <div class="char-list" id="select-list"></div>
+    </div>
+    <div class="select-footer">
+      <button class="btn primary" id="btn-to-battle" style="width:100%;" disabled>このキャラでたたかう</button>
+    </div>
+  </div>
+
+  <!-- ===== SCENARIO ===== -->
+  <div id="screen-scenario" class="screen">
+    <div class="topbar">
+      <button class="back-btn" data-back="hub">← もどる</button>
+      <span class="topbar-title">ストーリーモード</span>
+    </div>
+    <div class="grid-body">
+      <div style="font-size:.72rem; color:var(--muted); margin:2px 0 10px; line-height:1.7;">ステージごとに ざこを たおすと、そこを とくいな つよい ボスが あらわれる。たおすと つぎの ステージへ。まちの いちばん おくで、でんせつの「まおう」が まっている。</div>
+      <button class="btn" id="btn-scenario-restart" style="width:100%; margin-bottom:10px; display:none;">ストーリーを さいしょから やりなおす</button>
+      <div class="char-list" id="scenario-stage-list"></div>
+    </div>
+  </div>
+
+  <!-- ===== TOURNAMENT ===== -->
+  <div id="screen-tournament" class="screen">
+    <div class="topbar">
+      <button class="back-btn" data-back="hub">← もどる</button>
+      <span class="topbar-title">トーナメントモード</span>
+    </div>
+    <div class="hub-body">
+      <div style="font-size:.8rem; color:var(--muted); line-height:1.7; text-align:center; padding:6px 4px;">1体のキャラで5回戦を勝ち抜く真剣勝負。負けたら即敗退。全勝すると豪華なボーナスのお金がもらえる。</div>
+      <div id="tournament-best" style="text-align:center; font-size:.78rem; color:var(--gold); font-weight:700;"></div>
+      <button class="btn primary" id="btn-tournament-entry" style="margin-top:6px;">エントリーする</button>
+    </div>
+  </div>
+
+  <!-- ===== VERSUS ===== -->
+  <div id="screen-versus" class="screen">
+    <div class="topbar">
+      <button class="back-btn" data-back="hub">← もどる</button>
+      <span class="topbar-title">たいせんモード</span>
+    </div>
+    <div class="grid-body">
+      <div class="vs-seg"><button id="vs-cpu" class="on">CPUと たいせん</button><button id="vs-2p">ふたりで たいせん</button></div>
+      <div id="vs-hint" style="font-size:.7rem; color:var(--muted); margin:0 0 10px;"></div>
+      <div style="font-size:.72rem; color:var(--muted); margin:2px 0 4px;">ステージを選ぶ</div>
+      <div class="stage-row" id="versus-stage-list"></div>
+      <div style="font-size:.72rem; color:var(--muted); margin:14px 0 4px;" id="vs-lab-a">自分のキャラを選ぶ</div>
+      <div class="stage-row" id="versus-player-row"></div>
+      <div style="font-size:.72rem; color:var(--muted); margin:14px 0 4px;" id="vs-lab-b">相手のキャラを選ぶ</div>
+      <div class="stage-row" id="versus-enemy-row"></div>
+    </div>
+    <div class="select-footer">
+      <button class="btn primary" id="btn-versus-start" style="width:100%;" disabled>この組み合わせで対戦する</button>
+    </div>
+  </div>
+
+  <!-- ===== BATTLE ===== -->
+  <div id="screen-battle" class="screen">
+    <div class="bp-head"><span class="stage-name" id="battle-stage-label"></span><span class="bp-tg"><button class="bp-sm" data-k="bgm"></button><button class="bp-sm" data-k="se"></button><button class="bp-sm q" id="bp-quit">やめる</button></span></div>
+    <div id="bp-wrap"><canvas id="bump-cv" width="300" height="500"></canvas></div>
+    <div id="bp-msg"></div>
+    <div id="bp-kbhint">PC操作: いどう WASD/矢印 ・ だっしゅ Space(J) ・ ショット K ・ ひっさつ L(2人対戦の2P: 矢印 + , . /)</div>
+  </div>
+
+  <!-- ===== COLLECTION ===== -->
+  <div id="screen-collection" class="screen">
+    <div class="topbar">
+      <button class="back-btn" data-back="hub">← もどる</button>
+      <span class="topbar-title">ずかん</span>
+    </div>
+    <div class="grid-body">
+      <div class="zukan-grid" id="zukan-grid"></div>
+      <h3 style="font-family:'DotGothic16',sans-serif; font-size:.85rem; color:var(--gold); margin:20px 0 4px;">パワーアップ</h3>
+      <div class="zukan-grid" id="item-grid"></div>
+      <h3 style="font-family:'DotGothic16',sans-serif; font-size:.85rem; color:var(--gold); margin:20px 0 4px;">ステージ</h3>
+      <div class="zukan-grid" id="stage-grid"></div>
+    </div>
+  </div>
+
+  <!-- ===== OVERLAY: GACHA REVEAL ===== -->
+  <div id="overlay-reveal" class="overlay hidden">
+    <div class="overlay-card">
+      <div class="reveal-stars" id="reveal-stars">通常</div>
+      <div class="reveal-portrait" id="reveal-portrait"></div>
+      <div class="reveal-name" id="reveal-name">-</div>
+      <div class="reveal-status" id="reveal-status">-</div>
+      <div class="reveal-tagline" id="reveal-tagline">-</div>
+      <div class="overlay-btns">
+        <button class="btn" id="btn-reveal-close">とじる</button>
+        <button class="btn primary" id="btn-reveal-again">もういちど</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== OVERLAY: COLLECTION DETAIL ===== -->
+  <div id="overlay-detail" class="overlay hidden">
+    <div class="overlay-card">
+      <div class="reveal-stars" id="detail-stars">通常</div>
+      <div class="detail-portrait" id="detail-portrait"></div>
+      <div class="reveal-name" id="detail-name">-</div>
+      <div class="tag" id="detail-tags" style="display:inline-block; margin-bottom:2px;"></div>
+      <div class="detail-stats" id="detail-stats-body"></div>
+      <div class="detail-desc" id="detail-desc">-</div>
+      <div id="detail-strengthen"></div>
+      <button class="btn primary" id="btn-detail-close">とじる</button>
+    </div>
+  </div>
+
+  <!-- ===== OVERLAY: BATTLE RESULT ===== -->
+  <div id="overlay-result" class="overlay hidden">
+    <div class="overlay-card">
+      <div class="result-title" id="result-title">-</div>
+      <div class="result-line" id="result-line1">-</div>
+      <div class="result-line" id="result-line2"></div>
+      <div class="overlay-btns" style="margin-top:8px;">
+        <button class="btn" id="btn-result-hub">メニューへ</button>
+        <button class="btn primary" id="btn-result-again">もう一度たたかう</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== OVERLAY: SETTINGS / RESET ===== -->
+  <div id="overlay-settings" class="overlay hidden">
+    <div class="overlay-card">
+      <div class="reveal-name" style="margin-bottom:10px;">せってい</div>
+      <div class="result-line" style="text-align:left; line-height:1.7; margin-bottom:16px;">
+        お金・ずかん・レベル・アイテム・ストーリー進行・トーナメント記録など、すべてのセーブデータを削除して最初の状態に戻します。<br>
+        <b style="color:var(--red);">この操作は取り消せません。</b>
+      </div>
+      <button class="btn gold" id="btn-full-reset" style="width:100%; margin-bottom:10px;">すべてのデータをリセットする</button>
+      <button class="btn primary" id="btn-settings-close" style="width:100%;">とじる</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const rand = (lo,hi) => Math.floor(Math.random()*(hi-lo+1))+lo;
+
+  // ===================================================================
+  // PIXEL ART ENGINE — grid rendered as crisp SVG rects (any grid size)
+  // ===================================================================
+  function gridToSVG(grid, palette){
+    const rows = grid.length, cols = grid[0].length;
+    let s='';
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        const code = grid[r][c];
+        if(!code) continue;
+        s += `<rect x="${c}" y="${r}" width="1" height="1" fill="${palette[code]}"/>`;
+      }
+    }
+    return `<svg viewBox="0 0 ${cols} ${rows}" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">${s}</svg>`;
+  }
+  function withOverlay(base, overlay){
+    const g = base.map(r=>r.slice());
+    (overlay||[]).forEach(([r,c,code])=>{ g[r][c]=code; });
+    return g;
+  }
+
+  // ---- shared body silhouettes ----
+  const KAIJU_BODY = [
+    [0,0,0,0,7,0,0,0,0,7,0,0,0,0],
+    [0,0,0,0,7,7,0,0,7,7,0,0,0,0],
+    [0,0,0,1,1,1,1,1,1,1,1,0,0,0],
+    [0,0,1,2,2,2,2,2,2,2,2,1,0,0],
+    [0,0,1,2,6,2,2,2,2,6,2,1,0,0],
+    [0,0,1,2,2,3,3,3,3,2,2,1,0,0],
+    [0,0,0,1,2,2,2,2,2,2,1,0,0,0],
+    [0,0,4,1,2,2,2,2,2,2,1,4,0,0],
+    [0,4,4,1,2,2,2,2,2,2,1,4,4,0],
+    [0,4,1,2,2,8,8,8,8,2,2,1,4,0],
+    [0,0,1,2,8,8,8,8,8,8,2,1,0,0],
+    [0,0,1,2,2,8,8,8,8,2,2,1,0,0],
+    [0,0,0,1,2,2,2,2,2,2,1,0,0,0],
+    [0,0,0,0,1,2,2,2,2,1,0,0,0,0],
+    [0,0,0,0,0,1,3,3,1,0,0,0,0,0],
+    [0,0,0,0,1,1,3,3,1,1,0,0,0,0],
+    [0,0,0,0,0,1,1,1,1,0,0,0,0,0]
+  ];
+  const ROBOT_BODY = [
+    [0,0,0,0,0,0,0,7,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,1,0,0,0,0,0,0],
+    [0,0,0,1,1,1,1,1,1,1,1,0,0,0],
+    [0,0,1,2,2,2,2,2,2,2,2,1,0,0],
+    [0,0,1,2,6,6,6,6,6,6,2,1,0,0],
+    [0,0,1,2,2,2,2,2,2,2,2,1,0,0],
+    [0,0,0,1,2,2,2,2,2,2,1,0,0,0],
+    [0,4,4,1,2,2,2,2,2,2,1,4,4,0],
+    [4,4,1,2,2,2,2,2,2,2,2,1,4,4],
+    [0,4,1,2,8,8,8,8,8,8,2,1,4,0],
+    [0,0,1,2,2,8,8,8,8,2,2,1,0,0],
+    [0,0,1,2,2,2,2,2,2,2,2,1,0,0],
+    [0,0,0,1,2,2,2,2,2,2,1,0,0,0],
+    [0,0,0,1,3,3,0,0,3,3,1,0,0,0],
+    [0,0,0,1,3,3,0,0,3,3,1,0,0,0],
+    [0,0,0,1,3,3,0,0,3,3,1,0,0,0],
+    [0,0,0,0,1,1,0,0,1,1,0,0,0,0]
+  ];
+  // ---- クラーケン(触手)用ボディ。頭はイカのように三角形 ----
+  const KRAKEN_BODY = [
+    [0,0,0,0,0,0,1,1,0,0,0,0,0,0],
+    [0,0,0,0,0,1,2,2,1,0,0,0,0,0],
+    [0,0,0,0,1,2,2,2,2,1,0,0,0,0],
+    [0,0,0,1,6,2,2,2,2,6,1,0,0,0],
+    [0,0,1,2,2,2,2,2,2,2,2,1,0,0],
+    [0,7,1,2,2,2,2,2,2,2,2,1,7,0],
+    [0,0,1,2,2,2,2,2,2,2,2,1,0,0],
+    [0,0,1,2,0,1,2,0,1,2,0,1,2,0],
+    [0,0,1,3,0,1,3,0,1,3,0,1,3,0],
+    [0,0,1,2,0,1,2,0,1,2,0,1,2,0],
+    [0,0,1,3,0,1,3,0,1,3,0,1,3,0],
+    [0,0,1,2,0,1,2,0,1,2,0,1,2,0],
+    [0,0,0,1,2,1,2,0,1,2,1,2,0,0],
+    [0,0,0,0,7,1,2,0,1,2,7,0,0,0],
+    [0,0,0,0,0,1,2,0,1,2,0,0,0,0],
+    [0,0,0,0,0,1,3,0,1,3,0,0,0,0],
+    [0,0,0,0,0,0,7,0,7,0,0,0,0,0]
+  ];
+  // ---- タンク型ロボット用ボディ(通常ロボと見た目を変えた別テンプレート) ----
+  const ROBOT_BODY2 = [
+    [0,0,0,0,0,0,0,7,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,1,0,0,0,0,0,0],
+    [0,0,0,1,1,1,1,1,1,1,1,0,0,0],
+    [0,0,1,2,2,2,2,2,2,2,2,1,0,0],
+    [0,0,1,2,6,6,6,6,6,6,2,1,0,0],
+    [7,7,1,2,2,2,2,2,2,2,2,1,0,0],
+    [0,0,0,1,2,2,2,2,2,2,1,0,0,0],
+    [0,1,1,1,2,2,2,2,2,2,1,1,1,0],
+    [1,1,2,2,2,2,2,2,2,2,2,2,1,1],
+    [1,1,2,8,8,8,8,8,8,8,8,2,1,1],
+    [1,1,2,2,8,8,8,8,8,8,2,2,1,1],
+    [0,1,1,2,2,2,2,2,2,2,2,1,1,0],
+    [0,1,3,3,3,3,3,3,3,3,3,3,1,0],
+    [0,1,3,3,3,3,3,3,3,3,3,3,1,0],
+    [0,1,3,4,3,4,3,4,3,4,3,3,1,0],
+    [0,1,3,3,3,3,3,3,3,3,3,3,1,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,0,0]
+  ];
+
+  const WING_L = [
+    [7,1,9],
+    [8,0,9],[8,1,9],
+    [9,0,9],[9,1,9]
+  ];
+  const WING_R = [
+    [7,12,9],
+    [8,12,9],[8,13,9],
+    [9,12,9],[9,13,9]
+  ];
+  const CANNON_L = [[7,0,9]];
+  const CANNON_R = [[7,13,9]];
+  // タンク型ロボットの「顔」を消して、無機質なタレット風にするパーツ
+  const NO_FACE = [[4,4,2],[4,5,2],[4,6,2],[4,7,2],[4,8,2],[4,9,2]];
+  // 頭部アンテナをV字クレストに変えるパーツ(他のロボットでも流用可)
+  const V_CREST = [[0,7,0],[1,7,0],[0,3,7],[0,10,7],[1,4,7],[1,9,7]];
+  // 竜タイプのモンスター向け：足をロボットの脚とおなじ形にして流用するパーツ(他キャラでも流用可)
+  const ROBOT_STYLE_LEGS = [
+    [13,3,1],[13,4,3],[13,5,3],[13,6,0],[13,7,0],[13,8,3],[13,9,3],[13,10,1],
+    [14,3,1],[14,4,3],[14,5,3],[14,6,0],[14,7,0],[14,8,3],[14,9,3],[14,10,1],
+    [15,3,1],[15,4,3],[15,5,3],[15,6,0],[15,7,0],[15,8,3],[15,9,3],[15,10,1],
+    [16,4,1],[16,5,1],[16,6,0],[16,7,0],[16,8,1],[16,9,1]
+  ];
+  // 竜タイプのモンスター向け：腰から横に長く伸びる尻尾のパーツ(他キャラでも流用可・全てのドラゴンで同じ位置に付ける)
+  const DRAGON_TAIL = [
+    [10,12,2],
+    [11,11,2],[11,12,2],[11,13,3],
+    [12,11,3],[12,12,3],[12,13,7]
+  ];
+
+  // ---- アイテム・カプセル用の小さいドット絵(10x10) ----
+  const MEAT_ICON = [
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,0,0,0,0],
+    [0,0,0,0,10,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,0,0,0,0],
+    [0,0,0,10,9,10,0,0,0,0,0,0,0,0,0,0,0,10,10,9,10,10,0,0],
+    [0,0,0,0,10,0,0,0,1,1,1,1,1,1,1,0,0,0,0,10,0,0,0,0],
+    [0,0,0,0,0,0,1,1,3,3,3,3,3,3,3,1,1,0,0,10,0,0,0,0],
+    [0,1,1,1,0,1,3,3,3,3,3,3,3,3,2,2,2,1,0,0,1,1,1,0],
+    [1,7,7,7,1,1,3,9,9,4,3,3,2,2,2,2,2,1,0,1,7,7,7,1],
+    [1,7,7,7,1,3,3,4,3,3,3,2,2,2,2,2,2,5,1,1,7,7,7,1],
+    [1,8,7,7,1,3,3,4,3,3,2,2,2,11,2,2,5,5,1,1,7,7,8,1],
+    [0,1,7,7,7,3,3,3,3,2,2,2,2,2,2,5,5,5,7,7,7,7,1,0],
+    [0,1,7,7,8,3,3,3,2,2,2,2,2,2,5,5,5,5,8,8,7,7,1,0],
+    [1,7,7,7,1,3,3,2,2,2,2,2,2,5,11,5,5,5,1,1,7,7,7,1],
+    [1,8,8,8,1,3,2,2,2,2,2,11,5,5,5,5,5,5,1,1,8,8,8,1],
+    [0,1,1,1,0,1,5,5,5,5,5,5,5,5,5,5,5,1,0,0,1,1,1,0],
+    [0,0,0,0,0,0,1,5,5,5,5,5,5,5,5,5,1,0,0,0,0,0,0,0],
+    [0,0,0,0,0,10,0,1,1,1,1,5,1,1,1,1,0,0,0,0,10,0,0,0],
+    [0,0,0,0,10,9,10,0,0,0,0,1,0,0,0,0,0,0,0,10,9,10,0,0],
+    [0,0,0,0,0,10,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+  ];
+  const MEAT_PALETTE = {1:'#3a1c10',2:'#e8683a',3:'#ff9a62',4:'#ffd0a0',5:'#b83c22',7:'#f8efd6',8:'#d9c9a0',9:'#ffffff',10:'#fff08a',11:'#c84a2a'};
+  const PART_ICON = [
+    [0,0,1,0,0,0,0,1,0,0],
+    [0,0,1,1,0,0,1,1,0,0],
+    [1,1,1,2,2,2,2,1,1,1],
+    [0,1,2,2,4,4,2,2,1,0],
+    [0,1,2,4,3,3,4,2,1,0],
+    [0,1,2,4,3,3,4,2,1,0],
+    [0,1,2,2,4,4,2,2,1,0],
+    [1,1,1,2,2,2,2,1,1,1],
+    [0,0,1,1,0,0,1,1,0,0],
+    [0,0,1,0,0,0,0,1,0,0]
+  ];
+  const PART_PALETTE = {1:'#2a2a2a',2:'#8a8a9a',3:'#c9cdd8',4:'#5a5a6a'};
+  // ---- たまご / ロボづくりマシン のドット絵 ----
+  const EGG_ICON = [
+    [0,0,0,0,0,1,1,0,0,0,0,0],
+    [0,0,0,0,1,2,2,1,0,0,0,0],
+    [0,0,0,1,2,2,2,2,1,0,0,0],
+    [0,0,1,2,4,2,2,2,2,1,0,0],
+    [0,1,2,4,4,2,2,2,3,3,1,0],
+    [0,1,2,2,2,2,2,2,3,3,1,0],
+    [0,1,2,2,2,2,2,2,3,3,1,0],
+    [1,2,2,2,2,2,2,2,3,3,3,1],
+    [1,2,2,2,2,2,2,2,3,3,3,1],
+    [1,2,2,2,2,2,2,2,3,3,3,1],
+    [0,1,2,2,2,2,2,2,3,3,1,0],
+    [0,1,2,2,2,2,2,2,3,3,1,0],
+    [0,0,1,2,2,2,2,2,3,1,0,0],
+    [0,0,0,1,1,2,2,1,1,0,0,0],
+    [0,0,0,0,0,1,1,0,0,0,0,0]
+  ];
+  const EGG_OPEN_ICON = [
+    [0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,9,9,0,0,0,0,0],
+    [0,0,0,0,0,10,10,0,0,0,0,0],
+    [0,0,0,0,0,10,10,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,0,0,1,0,0,0,1,0,0,0,0],
+    [0,1,1,2,1,1,1,2,1,1,0,0],
+    [1,2,1,2,1,2,1,2,1,3,1,0],
+    [1,2,2,2,2,2,2,2,3,3,3,1],
+    [1,2,2,2,2,2,2,2,3,3,3,1],
+    [0,1,2,2,2,2,2,2,3,3,1,0],
+    [0,1,2,2,2,2,2,2,3,3,1,0],
+    [0,0,1,2,2,2,2,2,3,1,0,0],
+    [0,0,0,1,1,2,2,1,1,0,0,0],
+    [0,0,0,0,0,1,1,0,0,0,0,0]
+  ];
+  const POD_ICON = [
+    [0,0,0,0,0,0,1,5,5,1,0,0,0,0,0,0],
+    [0,0,0,1,1,1,1,7,7,1,1,1,1,0,0,0],
+    [0,0,1,7,7,7,7,7,7,7,7,7,7,1,0,0],
+    [0,0,1,7,7,7,7,7,7,7,7,7,7,1,0,0],
+    [0,0,1,2,2,2,2,2,2,2,2,2,2,1,0,0],
+    [0,0,1,2,9,2,2,2,2,2,2,2,2,1,0,0],
+    [0,0,1,2,9,2,2,6,6,2,2,2,2,1,0,0],
+    [0,0,1,2,9,2,6,6,6,6,2,2,2,1,0,0],
+    [0,0,1,3,9,3,6,6,6,6,3,3,3,1,0,0],
+    [0,0,1,3,9,3,3,6,6,3,3,3,3,1,0,0],
+    [0,0,1,3,9,3,6,3,3,6,3,3,3,1,0,0],
+    [0,0,1,3,3,3,3,3,3,3,3,3,3,1,0,0],
+    [0,0,1,3,3,3,3,3,3,3,3,3,3,1,0,0],
+    [0,1,7,7,7,7,7,7,7,7,7,7,7,7,1,0],
+    [0,1,6,6,6,6,6,6,6,6,6,6,6,6,1,0],
+    [0,1,6,6,10,6,10,6,6,10,6,10,6,6,1,0],
+    [0,1,6,6,6,6,6,6,6,6,6,6,6,6,1,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0]
+  ];
+  const POD_OPEN_ICON = [
+    [0,0,0,0,0,0,1,5,5,1,0,0,0,0,0,0],
+    [0,0,0,1,1,1,1,7,7,1,1,1,1,0,0,0],
+    [0,0,1,7,7,7,7,7,7,7,7,7,7,1,10,0],
+    [0,10,1,7,7,7,7,7,7,7,7,7,7,1,9,10],
+    [0,10,1,7,5,5,5,5,5,5,5,5,7,1,10,0],
+    [10,9,1,7,5,5,5,5,5,5,5,5,7,1,0,0],
+    [0,10,1,7,5,5,5,9,9,5,5,5,7,1,0,0],
+    [0,10,1,7,5,5,5,9,9,5,5,5,7,1,0,0],
+    [0,0,1,7,5,5,4,4,4,4,5,5,7,1,0,0],
+    [0,0,1,7,5,5,5,4,4,5,5,5,7,9,10,10],
+    [0,0,1,7,5,5,4,5,5,4,5,5,7,1,0,0],
+    [0,0,1,7,5,5,5,5,5,5,5,5,7,1,0,0],
+    [0,0,1,7,5,5,5,5,5,5,5,5,7,1,0,0],
+    [0,1,7,7,7,7,7,7,7,7,7,7,7,7,1,0],
+    [0,1,6,6,6,6,6,6,6,6,6,6,6,6,1,0],
+    [0,1,6,6,5,6,5,6,6,5,6,5,6,6,1,0],
+    [0,1,6,6,6,6,6,6,6,6,6,6,6,6,1,0],
+    [0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0]
+  ];
+  function eggSVG(c1, c2){ return gridToSVG(EGG_ICON, {1:'#2a1a3a',2:c1,3:c2,4:'#ffffff',9:'#ffffff',10:'#fff08a'}); }
+  function eggOpenSVG(c1, c2){ return gridToSVG(EGG_OPEN_ICON, {1:'#2a1a3a',2:c1,3:c2,4:'#ffffff',9:'#ffffff',10:'#fff08a'}); }
+  function podSVG(c1, c2){ return gridToSVG(POD_ICON, {1:'#1a1f33',2:c1,3:c2,4:'#6a7aa0',5:'#fff08a',6:'#4a5068',7:'#b4bcd4',9:'#ffffff',10:'#ff5470'}); }
+  function podOpenSVG(c1, c2){ return gridToSVG(POD_OPEN_ICON, {1:'#1a1f33',2:c1,3:c2,4:'#6a7aa0',5:'#fff08a',6:'#4a5068',7:'#b4bcd4',9:'#ffffff',10:'#fff08a'}); }
+  const itemPortraits = {
+    meat: gridToSVG(MEAT_ICON, MEAT_PALETTE),
+    robotpart: gridToSVG(PART_ICON, PART_PALETTE)
+  };
+
+  // ---- バトルステージ(戦闘背景)のドット絵(14x8)。系列との相性でステータス変化 ----
+  const PLAINS_STAGE = [
+    [5,5,5,5,5,6,6,6,5,5,5,5,5,5],
+    [5,5,5,5,6,6,6,6,6,5,5,5,5,5],
+    [5,5,5,5,5,6,6,6,5,5,5,5,5,5],
+    [5,5,5,5,5,5,5,5,5,5,5,5,5,5],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+    [2,3,2,2,3,2,2,3,2,2,3,2,2,3],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3]
+  ];
+  const PLAINS_PALETTE = {2:'#3f7a3a',3:'#2f6a2b',5:'#bfe3ff',6:'#ffe14d'};
+  const VOLCANO_STAGE = [
+    [5,5,5,5,5,5,7,7,5,5,5,5,5,5],
+    [5,5,5,5,5,7,6,6,7,5,5,5,5,5],
+    [5,5,5,1,1,1,6,6,1,1,1,5,5,5],
+    [5,5,1,1,1,1,6,6,1,1,1,1,5,5],
+    [5,1,1,1,1,1,1,1,1,1,1,1,1,5],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3]
+  ];
+  const VOLCANO_PALETTE = {1:'#2a1510',3:'#4a1810',5:'#1a2035',6:'#ff6a2e',7:'#8a8a9a'};
+  const SEA_STAGE = [
+    [5,5,5,5,6,6,6,5,5,5,5,5,5,5],
+    [5,5,5,5,6,6,6,5,5,5,5,5,5,5],
+    [5,5,5,5,5,5,5,5,5,5,5,5,5,5],
+    [2,2,3,2,2,2,3,2,2,2,3,2,2,2],
+    [2,2,2,2,3,2,2,2,3,2,2,2,3,2],
+    [2,3,2,2,2,3,2,2,2,3,2,2,2,3],
+    [2,2,2,3,2,2,2,3,2,2,2,3,2,2],
+    [2,2,2,2,2,2,2,2,2,2,2,2,2,2]
+  ];
+  const SEA_PALETTE = {2:'#1f6f9a',3:'#3ec9ff',5:'#0a2a4a',6:'#ffe14d'};
+  const CITY_STAGE = [
+    [5,5,5,5,5,5,5,5,5,5,5,5,5,5],
+    [5,5,1,5,5,1,1,5,5,1,5,5,1,5],
+    [5,5,1,5,1,1,1,1,5,1,5,1,1,5],
+    [1,1,1,5,1,1,1,1,5,1,5,1,1,5],
+    [1,1,1,1,1,1,1,1,1,1,5,1,1,5],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,5],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [3,3,3,3,3,3,3,3,3,3,3,3,3,3]
+  ];
+  const CITY_PALETTE = {1:'#8890aa',3:'#3a3a52',5:'#4a4a62'};
+
+  const STAGE_ORDER = ['plains','volcano','sea','city'];
+  const STAGE_DB = {
+    plains:{ id:'plains', name:'くさはら', grid:PLAINS_STAGE, palette:PLAINS_PALETTE, desc:'ドラゴン系や鬼・巨人族が本領を発揮する、開けた大地のステージ。' },
+    volcano:{ id:'volcano', name:'かざん', grid:VOLCANO_STAGE, palette:VOLCANO_PALETTE, desc:'毒々しい怪異たちが好む、灼熱と硫黄のステージ。' },
+    sea:{ id:'sea', name:'うみ', grid:SEA_STAGE, palette:SEA_PALETTE, desc:'海の巨獣たちが本領を発揮する、波に揺れるステージ。' },
+    city:{ id:'city', name:'まち', grid:CITY_STAGE, palette:CITY_PALETTE, desc:'ロボットたちの性能が発揮しやすい、機械化都市。' }
+  };
+  function stageSVG(id){ return gridToSVG(STAGE_DB[id].grid, STAGE_DB[id].palette); }
+  // キャラの生息系列(ステージ相性の判定に使用)
+  const HABITAT = {
+    dragon:'plains', reddragon:'plains', darkdragon:'plains',
+    cyclops:'plains', golem:'volcano',
+    kraken:'sea', leviathan:'sea',
+    blazeunit:'city', vstriker:'city', shadowcannon:'city', tankroid:'city',
+    pikotan:'city',
+    medusa:'volcano', thunderking:'volcano', basilisk:'volcano',
+    archdemon:'city'
+  };
+  const STAGE_OPPOSITE = { volcano:'sea', sea:'volcano', city:'plains', plains:'city' };
+  function stageMultiplier(stageId, habitat){
+    if(stageId === habitat) return 1.15;
+    if(STAGE_OPPOSITE[stageId] === habitat) return 0.9;
+    return 1;
+  }
+
+  // ===================================================================
+  // CHARACTER DATABASE  (属性システムは廃止。種族タグ＋バトルタイプ)
+  // ===================================================================
+  const SPECIES_NAME = {kaiju:'モンスター',robot:'ロボット'};
+  const GOLEM_BODY = ['00000000000000', '00000000000000', '00011111111000', '00133333333100', '00122555522100', '00125677652100', '00012555521000', '00111111111100', '01492222224410', '14418888881441', '12418833881421', '12212888821221', '14412222221441', '14411222211441', '11113311331111', '00013311331000', '00011111111000'].map(r=>r.split('').map(Number));
+  const BODY_MAP = { golem:GOLEM_BODY, kaiju:KAIJU_BODY, robot:ROBOT_BODY, kraken:KRAKEN_BODY, tank:ROBOT_BODY2 };
+  const TYPE_DB = {
+    rapid:  { name:'連射型',   desc:'ショットを押しっぱなしで連射できる。足が速い。' },
+    charge: { name:'チャージ型', desc:'ひっさつゲージがたまりやすく、とっしんが強い。' },
+    guard:  { name:'ガード型', desc:'重くて飛ばされにくく、体力も高い。' },
+    counter:{ name:'カウンター型', desc:'ダメージを受けると、ときどき反撃する。' },
+    power:  { name:'パワー型', desc:'ぶつかりのダメージが大きい。' },
+    recoil: { name:'反動型',   desc:'とっしんが強いが、自分もすこし傷つく。' }
+  };
+
+  const CHAR_ORDER = ['dragon','blazeunit','pikotan','vstriker','cyclops','medusa','thunderking','shadowcannon','tankroid','kraken','reddragon','golem','leviathan','basilisk','darkdragon','archdemon'];
+
+  // オーガ(赤鬼)の金棒パーツ(右手持ち)／サイクロプスの単眼パーツ／メデューサの髪飾りパーツ
+  const ONI_CLUB = [
+    [6,1,9],[6,0,9],
+    [7,2,9],[7,1,9],[7,0,9],
+    [8,2,9],[8,1,9],[8,0,9],
+    [9,1,9],[9,0,4],
+    [10,1,9],[10,0,9],
+    [11,1,9],[11,0,9]
+  ];
+  const CYCLOPS_EYE = [
+    [0,4,0],[0,9,0],[1,4,0],[1,5,0],[1,8,0],[1,9,0],
+    [0,6,7],[0,7,7],[1,6,7],[1,7,7],
+    [4,4,2],[4,9,2],
+    [5,5,2],[5,6,2],[5,7,2],[5,8,2],
+    [4,6,6],[4,7,6],[5,6,6],[5,7,6]
+  ];
+  const MEDUSA_HAIR = [[0,6,7],[0,7,7]];
+
+  const CHAR_DB = {
+    blazeunit:{ id:'blazeunit', name:'ブレイズユニット', species:'robot', body:'robot', rarity:1, type:'power',
+      hp:18, atkLo:5, atkHi:7, enMax:8, special:{name:'バーナーショット', mult:1.6, cost:4},
+      tagline:'工場地帯で生まれた火炎放射のロボット。頭に血が上りやすい。',
+      desc:'もとは溶接作業用ロボットだったが、火力の高さからバトル用に改造された。動作音がやや大きい。',
+      overlay:[], palette:{1:'#241010',2:'#8a2f22',3:'#4a1810',4:'#8a2f22',6:'#ff8a3d',7:'#ffb35c',8:'#c1432a'} },
+
+    dragon:{ id:'dragon', name:'ドラゴン', species:'kaiju', body:'kaiju', rarity:1, type:'rapid',
+      hp:20, atkLo:5, atkHi:7, enMax:8, special:{name:'ワイルドブレス', mult:1.6, cost:4},
+      tagline:'素朴などこにでもいる系のドラゴン。人懐っこく、力試しが大好き。',
+      desc:'この世界でも特によく見かける、基本のドラゴン。まだ小さいが、しっぽの力強さは一人前。',
+      overlay:[...WING_L,...WING_R,...DRAGON_TAIL,...ROBOT_STYLE_LEGS],
+      palette:{1:'#132a12',2:'#4a9a4a',3:'#1f4a20',4:'#4a9a4a',6:'#fff3b0',7:'#8fe28f',8:'#bdeabd',9:'#3d7a3d'} },
+
+    vstriker:{ id:'vstriker', name:'ブイストライカー', species:'robot', body:'robot', rarity:2, type:'rapid',
+      hp:23, atkLo:6, atkHi:9, enMax:9, special:{name:'ブイキャノン', mult:1.7, cost:5},
+      tagline:'頭部のV字センサーが特徴のエース専用機。',
+      desc:'量産機とは一線を画す高性能ユニット。V字のセンサーで敵の動きを素早く捉え、連射で畳みかける。',
+      overlay:[...V_CREST], palette:{1:'#0a1a2a',2:'#e8edf5',3:'#9aa8c0',4:'#e8edf5',6:'#3ec9ff',7:'#ff5470',8:'#c7d2e0'} },
+
+    cyclops:{ id:'cyclops', name:'サイクロプス', species:'kaiju', body:'kaiju', rarity:1, type:'guard',
+      hp:24, atkLo:5, atkHi:8, enMax:9, special:{name:'ロックスマッシュ', mult:1.65, cost:4},
+      tagline:'一つ目の巨人。力任せの一撃で相手を粉砕する。',
+      desc:'岩山に潜む巨人族の末裔。額の大きな一つ目で相手の動きをじっと見据える。',
+      overlay:[...CYCLOPS_EYE,...ROBOT_STYLE_LEGS], palette:{1:'#0a1f2a',2:'#3d7a9a',3:'#1a3a4a',4:'#3d7a9a',6:'#ff3355',7:'#e8d9a0',8:'#8fc4d9'} },
+
+    medusa:{ id:'medusa', name:'メデューサ', species:'kaiju', body:'kaiju', rarity:1, type:'counter',
+      hp:20, atkLo:5, atkHi:7, enMax:8, special:{name:'ペトリファイアイズ', mult:1.6, cost:4},
+      tagline:'蛇の髪を持つ怪女。その瞳を見た者は動けなくなるという。',
+      desc:'神話に登場する怪物。醜い姿を恥じて人目を避けて暮らしているらしい。',
+      overlay:[...MEDUSA_HAIR], palette:{1:'#0f1f0f',2:'#6a9a5a',3:'#2f4a25',4:'#6a9a5a',6:'#baff5a',7:'#3d6b2e',8:'#9ac98a'} },
+
+    thunderking:{ id:'thunderking', name:'サンダーキング', species:'kaiju', body:'kaiju', rarity:2, type:'charge',
+      hp:25, atkLo:6, atkHi:9, enMax:10, special:{name:'サンダークラッシュ', mult:1.7, cost:5},
+      tagline:'雷雲を従える誇り高きモンスター。群れの頂点に立つ。',
+      desc:'背中の翼をはためかせると空に稲光が走ると言われる。プライドが高く、格下との戦いは好まない。',
+      overlay:[...WING_L,...WING_R], palette:{1:'#241a05',2:'#f0c419',3:'#7a5c0a',4:'#f0c419',6:'#3a2a55',7:'#ffe98a',8:'#fff3c2',9:'#8a5cff'} },
+
+    shadowcannon:{ id:'shadowcannon', name:'シャドウキャノン', species:'robot', body:'robot', rarity:2, type:'counter',
+      hp:25, atkLo:6, atkHi:9, enMax:10, special:{name:'シャドウランス', mult:1.7, cost:5},
+      tagline:'夜間偵察用に開発された暗殺のロボット。気配を消すのが得意。',
+      desc:'元は偵察専用機だったが、装備された肩の砲台の威力が判明し、急遽バトル部隊に配属された。',
+      overlay:[...CANNON_L,...CANNON_R], palette:{1:'#0a0a0f',2:'#332b3d',3:'#1a1522',4:'#332b3d',6:'#ff3355',7:'#5a3d7a',8:'#463656',9:'#5a3d7a'} },
+
+    tankroid:{ id:'tankroid', name:'タンクロイドZ', species:'robot', body:'tank', rarity:2, type:'guard',
+      hp:26, atkLo:6, atkHi:8, enMax:9, special:{name:'キャタピラチャージ', mult:1.7, cost:5},
+      tagline:'重装甲のキャタピラ型ロボット。パワーはあるが小回りが利かない。',
+      desc:'工事現場の作業車両を改造して作られた試作ロボット。顔にあたる部分はなく、無機質なタレットが特徴。',
+      overlay:[...NO_FACE], palette:{1:'#1a1508',2:'#8a7a3a',3:'#4a4020',4:'#c9b45a',6:'#ff8a3d',7:'#c9b45a',8:'#e8d9a0'} },
+
+    kraken:{ id:'kraken', name:'クラーケン', species:'kaiju', body:'kraken', rarity:3, type:'recoil',
+      hp:26, atkLo:6, atkHi:9, enMax:10, special:{name:'ディープカレント', mult:1.7, cost:5},
+      tagline:'深海からやってきた触手のモンスター。締め付ける力はモンスター随一。',
+      desc:'イカのように尖った頭が特徴。普段は深い海の底に潜んでいるが、たまごから かえってからは おとなしい。',
+      overlay:[], palette:{1:'#0a1a2a',2:'#2a5a78',3:'#123a52',4:'#2a5a78',6:'#eafcff',7:'#7fd6c8',8:'#4a8fae'} },
+
+    reddragon:{ id:'reddragon', name:'レッドドラゴン', species:'kaiju', body:'kaiju', rarity:3, type:'power',
+      hp:26, atkLo:7, atkHi:10, enMax:10, special:{name:'フレアバースト', mult:1.75, cost:5},
+      tagline:'中堅どころの実力を持つ赤い竜。気性は荒いが仲間思い。',
+      desc:'ドラゴンの中でも一回り大きく育った個体。燃え盛る炎のブレスを得意とする。',
+      overlay:[...WING_L,...WING_R,...DRAGON_TAIL,...ROBOT_STYLE_LEGS],
+      palette:{1:'#2a0f08',2:'#c1432a',3:'#6a1f10',4:'#c1432a',6:'#ffdd55',7:'#ff8a3d',8:'#e8875a',9:'#8a2f1a'} },
+
+    golem:{ id:'golem', name:'ロックゴーレム', species:'kaiju', body:'golem', rarity:3, type:'recoil',
+      hp:27, atkLo:7, atkHi:10, enMax:10, special:{name:'ロックローリング', mult:1.75, cost:5},
+      tagline:'一つ目の岩の巨人。ずっしり重く、ぶつかる力はモンスター随一。',
+      desc:'火山のふもとで眠っていた一つ目の岩神。大きな瞳が光ると目を覚まし、からだごと転がって敵をなぎはらう。',
+      overlay:[], palette:{1:'#16140f',2:'#8a8478',3:'#4a463c',4:'#a39c8c',5:'#fff4d0',6:'#ffb02e',7:'#2a1408',8:'#b8b2a0',9:'#6aa84f'} },
+
+    leviathan:{ id:'leviathan', name:'リヴァイアサン', species:'kaiju', body:'kaiju', rarity:4, type:'guard',
+      hp:29, atkLo:6, atkHi:9, enMax:10, special:{name:'タイダルクラッシュ', mult:1.7, cost:5},
+      tagline:'深海に眠るという伝説の巨大海獣。',
+      desc:'船を丸呑みにするとも言われる海の怪物。滅多に姿を見せない、力自慢のモンスター。',
+      overlay:[...WING_L,...WING_R,...DRAGON_TAIL],
+      palette:{1:'#08131f',2:'#1f5a78',3:'#0d2f42',4:'#1f5a78',6:'#eafcff',7:'#4fd6c8',8:'#2f7a94',9:'#0d2f42'} },
+
+    basilisk:{ id:'basilisk', name:'バジリスク', species:'kaiju', body:'kaiju', rarity:4, type:'charge',
+      hp:25, atkLo:6, atkHi:9, enMax:10, special:{name:'デスグレイズ', mult:1.7, cost:5},
+      tagline:'蛇の王とも呼ばれる伝説のモンスター。毒々しい瞳が特徴。',
+      desc:'見つめられた者は硬直してしまうという伝説を持つ。動きは遅いが一撃は重い。',
+      overlay:[], palette:{1:'#1a1f08',2:'#8a9a3a',3:'#4a5a1a',4:'#8a9a3a',6:'#ff3355',7:'#d9c94a',8:'#c9d98a'} },
+
+    darkdragon:{ id:'darkdragon', name:'ダークドラゴン', species:'kaiju', body:'kaiju', rarity:5, type:'power',
+      hp:32, atkLo:9, atkHi:12, enMax:13, special:{name:'ダークノヴァ', mult:1.9, cost:6},
+      tagline:'ドラゴン系の頂点に立つ、闇に潜む竜の王。',
+      desc:'あらゆるドラゴンの中でも最強と噂される伝説級のモンスター。その姿を見た者は少ない。',
+      overlay:[...WING_L,...WING_R,...DRAGON_TAIL,...ROBOT_STYLE_LEGS],
+      palette:{1:'#0a0a0f',2:'#2e2438',3:'#1a1522',4:'#2e2438',6:'#ff3355',7:'#5a3d7a',8:'#463656',9:'#3d2a55'} },
+
+    archdemon:{ id:'archdemon', name:'まおう', species:'kaiju', body:'kaiju', rarity:5, bossOnly:true, type:'power',
+      hp:30, atkLo:8, atkHi:11, enMax:12, special:{name:'ヘル・メテオ', mult:1.8, cost:6},
+      tagline:'すべてのモンスター・ロボットを統べるという伝説のまおう。ストーリーの最終ステージに立ちはだかる。',
+      desc:'金棒を軽々と振るう恐るべきまおう。機械化都市の最奥に潜み、挑戦者を待ち構えている。ふつうの たまごからは けっして うまれない。',
+      overlay:[...WING_L,...WING_R,...DRAGON_TAIL,...ROBOT_STYLE_LEGS,...ONI_CLUB],
+      palette:{1:'#1a0505',2:'#7a0f1f',3:'#3a0510',4:'#7a0f1f',6:'#ffcb47',7:'#ff5470',8:'#c1432a',9:'#4a0a18'} },
+
+    pikotan:{ id:'pikotan', name:'ピコタン', species:'robot', body:'robot', rarity:1, type:'rapid',
+      hp:18, atkLo:5, atkHi:7, enMax:8, special:{name:'ピコピコビーム', mult:1.6, cost:4},
+      tagline:'アンテナが ふたつ ある、すばしっこい ロボ。',
+      desc:'ピコピコと ひかる アンテナで あいてを みつける。ちいさいけど、れんしゃは なかなか すごい。',
+      overlay:[[0,7,0],[1,7,0],[0,4,7],[1,4,7],[0,9,7],[1,9,7]], palette:{1:'#2a1520',2:'#f4c6d8',3:'#b07a90',4:'#f4c6d8',6:'#3ec9ff',7:'#ff5470',8:'#ffffff'} },
+  };
+
+  const portraits = {};
+  CHAR_ORDER.forEach(id=>{
+    const c = CHAR_DB[id];
+    portraits[id] = gridToSVG(withOverlay(BODY_MAP[c.body], c.overlay), c.palette);
+  });
+
+  function starStr(rarity){ return {1:'通常',2:'R',3:'SR',4:'SSR',5:'UR'}[rarity] || '通常'; }
+
+  // ===================================================================
+  // パワーアップ(属性の代わりに、レベルでキャラを強くする仕組み)
+  // ===================================================================
+  const ITEM_ORDER = ['meat','robotpart'];
+  const ITEM_DB = {
+    meat:{ id:'meat', name:'げんきのおにく', forSpecies:'kaiju',
+      desc:'モンスターを つよくする えいようまんてんの おにく。ずかんから モンスターを えらんで つかうと レベルが あがる。' },
+    robotpart:{ id:'robotpart', name:'パワーパーツ', forSpecies:'robot',
+      desc:'ロボットせんようの パワーアップ ぶひん。ずかんから ロボットを えらんで つかうと レベルが あがる。' }
+  };
+  const LEVEL_CAP = 5;
+  const LEVEL_STEP = 0.12;
+  function levelMult(level){ return 1 + (level-1)*LEVEL_STEP; }
+  function effStats(id){
+    const c = CHAR_DB[id];
+    const lvl = (state.levels[id]) || 1;
+    const m = levelMult(lvl);
+    return { level:lvl, hp:Math.round(c.hp*m), atkLo:Math.max(1,Math.round(c.atkLo*m)), atkHi:Math.max(1,Math.round(c.atkHi*m)) };
+  }
+
+  // ===================================================================
+  // SAVE STATE
+  // ===================================================================
+  const SAVE_KEY = 'shinju_bump_save_v1';
+  const STARTER_ID = 'dragon';
+  let state = null;
+  function defaultState(){ return { coins:50, owned:{ [STARTER_ID]:true }, levels:{ [STARTER_ID]:1 }, items:{ meat:0, robotpart:0 }, stages:{ plains:true }, scenario:{ stageIndex:0, encounterIndex:0, clearedAll:false }, tournamentBestRound:0 }; }
+  function load(){
+    try{
+      const raw = localStorage.getItem(SAVE_KEY);
+      state = raw ? JSON.parse(raw) : defaultState();
+    }catch(e){ state = defaultState(); }
+    if(!state.items) state.items = { meat:0, robotpart:0 };
+    if(!state.levels) state.levels = {};
+    if(!state.owned) state.owned = {};
+    if(!state.stages) state.stages = {};
+    if(!state.scenario) state.scenario = { stageIndex:0, encounterIndex:0, clearedAll:false };
+    if(typeof state.tournamentBestRound !== 'number') state.tournamentBestRound = 0;
+    state.stages.plains = true;
+    Object.keys(state.owned).forEach(id=>{ if(!CHAR_DB[id]) delete state.owned[id]; });
+    Object.keys(state.levels).forEach(id=>{ if(!CHAR_DB[id]) delete state.levels[id]; });
+    Object.keys(state.stages).forEach(id=>{ if(!STAGE_DB[id]) delete state.stages[id]; });
+    CHAR_ORDER.forEach(id=>{ if(state.owned[id] && !state.levels[id]) state.levels[id]=1; });
+    if(Object.keys(state.owned).length===0){ state.owned[STARTER_ID]=true; state.levels[STARTER_ID]=1; }
+    ITEM_ORDER.forEach(id=>{ if(typeof state.items[id]!=='number') state.items[id]=0; });
+  }
+  function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }catch(e){} }
+  function ownedList(){ return CHAR_ORDER.filter(id=>state.owned[id]); }
+
+  // ===================================================================
+  // SCREEN NAV
+  // ===================================================================
+  function showScreen(name){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    $('screen-'+name).classList.add('active');
+    if(name==='hub') renderHub();
+    if(name==='gacha') renderGacha();
+    if(name==='select') renderSelect();
+    if(name==='collection'){ renderCollection(); renderItems(); renderStages(); }
+    if(name==='scenario') renderScenario();
+    if(name==='tournament') renderTournamentScreen();
+    if(name==='versus') renderVersus();
+  }
+  document.querySelectorAll('[data-back]').forEach(b=>{
+    b.addEventListener('click', ()=> showScreen(b.dataset.back));
+  });
+  $('btn-start').addEventListener('click', ()=> showScreen('hub'));
+  $('card-egg').addEventListener('click', ()=>{ gachaMode='egg'; showScreen('gacha'); });
+  $('card-robo').addEventListener('click', ()=>{ gachaMode='robo'; showScreen('gacha'); });
+  $('card-battle').addEventListener('click', ()=> openFighterSelect('wild'));
+  $('card-zukan').addEventListener('click', ()=> showScreen('collection'));
+  $('card-scenario').addEventListener('click', ()=> showScreen('scenario'));
+  $('card-tournament').addEventListener('click', ()=> showScreen('tournament'));
+  $('card-versus').addEventListener('click', ()=> showScreen('versus'));
+
+  // たまごとロボマシンをドット絵で表示
+  
+
+  // ===================================================================
+  // HUB
+  // ===================================================================
+  function renderHub(){
+    $('hub-coins').textContent = state.coins + '円';
+    $('hub-owned-count').textContent = ownedList().length + ' / ' + CHAR_ORDER.length;
+  }
+
+  // ===================================================================
+  // GACHA
+  // ===================================================================
+  let gachaMode = 'egg';
+  function gachaArt(open, c1, c2){
+    return gachaMode==='egg' ? (open ? eggOpenSVG(c1,c2) : eggSVG(c1,c2)) : (open ? podOpenSVG(c1,c2) : podSVG(c1,c2));
+  }
+  function renderGacha(){
+    const egg = gachaMode==='egg';
+    $('gacha-coins').textContent = state.coins + '円';
+    $('btn-gacha-spin').disabled = state.coins < GACHA_COST;
+    $('btn-gacha-spin').textContent = egg ? 'たまごを かえす' : 'ロボを つくる';
+    $('gacha-heading').textContent = egg ? 'たまごを かえそう' : 'ロボを つくろう';
+    $('gacha-note').innerHTML = egg
+      ? 'ふつうの モンスターが でやすく、URは めったに でない。げんきの おにくや ステージが でることも。<br>もっている ものが でたら、おかねや パワーアップの もとに かわる。'
+      : 'ふつうの ロボが でやすく、URは めったに でない。パワーパーツや ステージが でることも。<br>もっている ものが でたら、おかねや パワーアップの もとに かわる。';
+    if(!$('gacha-capsule').classList.contains('shake')) $('gacha-capsule').innerHTML = egg ? eggSVG('#fff4d6','#e8c98a') : podSVG('#9fe6ff','#3ec9ff');
+  }
+  const GACHA_COST = 30;
+  const RARITY_WEIGHT = {1:45, 2:30, 3:15, 4:8, 5:2};
+  const STAGE_POOL = ['volcano','sea','city'];
+  function pickGachaResult(){
+    const species = gachaMode==='egg' ? 'kaiju' : 'robot';
+    const roll = Math.random()*100;
+    if(roll < 14) return {type:'item', id: species==='kaiju' ? 'meat' : 'robotpart'};
+    if(roll < 28) return {type:'stage', id: STAGE_POOL[rand(0,STAGE_POOL.length-1)]};
+    const r2 = Math.random()*100;
+    let rarity = 1, acc = 0;
+    for(const k of [1,2,3,4,5]){ acc += RARITY_WEIGHT[k]; if(r2 < acc){ rarity = k; break; } }
+    let pool = CHAR_ORDER.filter(id=>CHAR_DB[id].species===species && CHAR_DB[id].rarity===rarity && !CHAR_DB[id].bossOnly);
+    if(!pool.length) pool = CHAR_ORDER.filter(id=>CHAR_DB[id].species===species && !CHAR_DB[id].bossOnly);
+    return {type:'character', id: pool[rand(0,pool.length-1)]};
+  }
+  function doGacha(){
+    if(state.coins < GACHA_COST) return;
+    state.coins -= GACHA_COST;BUMP.sfx('gacha');
+    const result = pickGachaResult();
+    const colorByRarity = {1:['#c7d2e8','#8fa0c8'], 2:['#9fe6ff','#3ec9ff'], 3:['#d9b8ff','#9a6aff'], 4:['#ffc9f0','#ff6ad5'], 5:['#ffe9a8','#ffcb47']};
+    let pair = gachaMode==='egg' ? ['#fff4d6','#e8c98a'] : ['#d7dcf0','#9aa6cf'];
+    if(result.type==='character') pair = colorByRarity[CHAR_DB[result.id].rarity];
+    else if(result.type==='stage') pair = ['#bfe3a8','#5a9a6a'];
+    const cap = $('gacha-capsule');
+    cap.innerHTML = gachaArt(false, pair[0], pair[1]);
+    cap.classList.remove('shake'); void cap.offsetWidth; cap.classList.add('shake');
+    $('gacha-coins').textContent = state.coins + '円';
+    $('btn-gacha-spin').disabled = true;
+    setTimeout(()=>{
+      cap.innerHTML = gachaArt(true, pair[0], pair[1]);
+      setTimeout(()=>{ cap.classList.remove('shake'); revealGacha(result); }, 350);
+    }, 700);
+  }
+  function revealGacha(result){BUMP.sfx('win');
+    const p = $('reveal-portrait');
+    if(result.type==='item'){
+      const it = ITEM_DB[result.id];
+      state.items[result.id] = (state.items[result.id]||0) + 1;
+      $('reveal-stars').textContent = '';
+      p.innerHTML = itemPortraits[result.id];
+      $('reveal-name').textContent = it.name;
+      $('reveal-status').textContent = `手に入れた！（所持数：${state.items[result.id]}）`;
+      $('reveal-status').classList.remove('dup');
+      $('reveal-tagline').textContent = it.desc;
+    } else if(result.type==='stage'){
+      const st = STAGE_DB[result.id];
+      $('reveal-stars').textContent = '';
+      p.innerHTML = stageSVG(result.id);
+      $('reveal-name').textContent = st.name;
+      const isNew = !state.stages[result.id];
+      if(isNew){
+        state.stages[result.id] = true;
+        $('reveal-status').textContent = 'ステージずかんに新登録された！';
+        $('reveal-status').classList.remove('dup');
+      } else {
+        state.coins += 20;
+        $('reveal-status').textContent = 'すでに持っていた…お金20円に変えた';
+        $('reveal-status').classList.add('dup');
+      }
+      $('reveal-tagline').textContent = st.desc;
+    } else {
+      const id = result.id, ch = CHAR_DB[id];
+      $('reveal-stars').textContent = starStr(ch.rarity);
+      p.innerHTML = portraits[id];
+      $('reveal-name').textContent = ch.name;
+      $('reveal-tagline').textContent = ch.tagline;
+      const isNew = !state.owned[id];
+      if(isNew){
+        state.owned[id] = true;
+        state.levels[id] = 1;
+        $('reveal-status').textContent = 'ずかんに新登録された！';
+        $('reveal-status').classList.remove('dup');
+      } else {
+        const itemId = ch.species==='kaiju' ? 'meat' : 'robotpart';
+        state.items[itemId] = (state.items[itemId]||0) + 1;
+        $('reveal-status').textContent = `すでに持っていた…${ITEM_DB[itemId].name}を1つ手に入れた`;
+        $('reveal-status').classList.add('dup');
+      }
+    }
+    save();
+    p.classList.remove('show'); void p.offsetWidth; p.classList.add('show');
+    $('btn-reveal-again').disabled = state.coins < GACHA_COST;
+    $('btn-reveal-again').textContent = gachaMode==='egg' ? 'もういちど かえす' : 'もういちど つくる';
+    $('overlay-reveal').classList.remove('hidden');
+  }
+  $('btn-gacha-spin').addEventListener('click', doGacha);
+  $('btn-reveal-close').addEventListener('click', ()=>{
+    $('overlay-reveal').classList.add('hidden');
+    renderGacha();
+    renderHub();
+  });
+  $('btn-reveal-again').addEventListener('click', ()=>{
+    $('overlay-reveal').classList.add('hidden');
+    doGacha();
+  });
+
+  // ===================================================================
+  // BATTLE SELECT
+  // ===================================================================
+  let selectedFighter = null;
+  let selectedStage = 'plains';
+  let currentMode = 'wild'; // 'wild' | 'scenario' | 'tournament'
+  let scenarioStageId = null;
+  const TOURNAMENT_STAGE = 'plains';
+  function renderStageRowGeneric(rowEl, current, onSelect){
+    rowEl.innerHTML = '';
+    STAGE_ORDER.forEach(id=>{
+      const st = STAGE_DB[id];
+      const owned = !!state.stages[id];
+      const card = document.createElement('div');
+      card.className = 'stage-card' + (owned?'':' locked') + (current===id?' selected':'');
+      if(owned){
+        card.innerHTML = `${stageSVG(id)}<div class="stage-name">${st.name}</div>`;
+        card.addEventListener('click', ()=> onSelect(id));
+      } else {
+        card.innerHTML = `<div class="zukan-lock">？</div><div class="stage-name">？？？</div>`;
+      }
+      rowEl.appendChild(card);
+    });
+  }
+  function renderStageRow(){
+    if(!state.stages[selectedStage]) selectedStage = 'plains';
+    renderStageRowGeneric($('stage-list'), selectedStage, id=>{ selectedStage = id; renderStageRow(); });
+  }
+  function openFighterSelect(mode, opts){
+    opts = opts || {};
+    currentMode = mode;
+    if(mode==='scenario') scenarioStageId = opts.stageId;
+    const backTarget = mode==='scenario' ? 'scenario' : mode==='tournament' ? 'tournament' : 'hub';
+    $('select-back-btn').dataset.back = backTarget;
+    $('select-title').textContent = mode==='scenario' ? 'ストーリー：出撃準備' : mode==='tournament' ? 'トーナメント：出撃準備' : 'バトル準備';
+    $('btn-to-battle').textContent = mode==='scenario' ? 'このキャラでちょうせんする' : mode==='tournament' ? 'このキャラでエントリーする' : 'このキャラでたたかう';
+    showScreen('select');
+  }
+  function renderSelect(){
+    selectedFighter = null;
+    $('btn-to-battle').disabled = true;
+    if(currentMode === 'wild'){
+      $('stage-select-wrap').style.display = '';
+      $('forced-stage-label').style.display = 'none';
+      renderStageRow();
+    } else {
+      $('stage-select-wrap').style.display = 'none';
+      $('forced-stage-label').style.display = '';
+      const forcedId = currentMode==='scenario' ? scenarioStageId : TOURNAMENT_STAGE;
+      selectedStage = forcedId;
+      $('forced-stage-label').textContent = currentMode==='scenario'
+        ? `たたかうステージ：${STAGE_DB[forcedId].name}`
+        : `たたかうステージ：${STAGE_DB[forcedId].name}（中立ステージ）`;
+    }
+    const list = $('select-list');
+    list.innerHTML = '';
+    ownedList().forEach(id=>{
+      const ch = CHAR_DB[id];
+      const card = document.createElement('div');
+      card.className = 'char-card';
+      card.innerHTML = `<div class="portrait-box">${portraits[id]}</div>
+        <div>
+          <div class="char-name">${ch.name}</div>
+          <div class="char-tags">
+            <span class="tag stars">${starStr(ch.rarity)}</span>
+            <span class="tag">${SPECIES_NAME[ch.species]}</span>
+            <span class="tag">${TYPE_DB[ch.type].name}</span>
+            <span class="tag">${STAGE_DB[HABITAT[id]].name}育ち</span>
+            <span class="tag">Lv.${state.levels[id]||1}</span>
+          </div>
+        </div>`;
+      card.addEventListener('click', ()=>{
+        document.querySelectorAll('.char-card').forEach(c=>c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedFighter = id;
+        $('btn-to-battle').disabled = false;
+      });
+      list.appendChild(card);
+    });
+  }
+  $('btn-to-battle').addEventListener('click', ()=>{
+    if(!selectedFighter) return;
+    if(currentMode === 'wild') startBattle(selectedFighter, { mode:'wild', stageId:selectedStage });
+    else if(currentMode === 'scenario') startScenarioEncounter(selectedFighter);
+    else if(currentMode === 'tournament') startTournament(selectedFighter);
+  });
+
+  // ===================================================================
+  // BATTLE — モンスターぶつかり合戦方式(ぶつけ合い・ショット・必殺技)
+  // ===================================================================
+  let battle = null;
+  function log(){}
+  const BUMP=(()=>{
+  const cv=$('bump-cv'),cx=cv.getContext('2d'),wrap=$('bp-wrap'),bmsg=$('bp-msg'),W=300,H=500,CX=150,CY=250,PR=15,WINS=1;
+  cx.imageSmoothingEnabled=false;
+  const SPS={};CHAR_ORDER.forEach(id=>{const c=CHAR_DB[id],g=withOverlay(BODY_MAP[c.body],c.overlay),rows=g.length,cols=g[0].length;
+    const mk=f=>{const e=document.createElement('canvas');e.width=cols;e.height=rows;const x=e.getContext('2d');g.forEach((r,y)=>r.forEach((v,i)=>{if(v){x.fillStyle=f||c.palette[v];x.fillRect(i,y,1,1)}}));return e};
+    SPS[id]={n:mk(),w:mk('#fff')}});
+  // タイプ別の差(おもさ/いどう/とっしん/クールタイム)
+  const TY={power:{m:1.15,sp:1,dp:1.1,cd:50},guard:{m:1.25,sp:.95,dp:1,cd:50},rapid:{m:1,sp:1.1,dp:.95,cd:35},charge:{m:1,sp:1,dp:1.25,cd:70},counter:{m:1.05,sp:1,dp:1,cd:50},recoil:{m:1.05,sp:1,dp:1.15,cd:45}};
+  const SI={plains:0,volcano:1,sea:2,city:3},FR=[.9,.9,.95,.9],BG=['#3f7a3a','#4a2418','#1f5a86','#4a4a62'];
+  const AX0=10,AX1=290,AY0=140,AY1=370,LAVA=[[75,255,26],[225,255,26]],BLD=[[137,237,26,38],[56,176,26,38],[218,176,26,38],[56,300,26,38],[218,300,26,38]];
+  // ショットを撃てるキャラ(連射型は押しっぱなしで連射)
+  const RNG={dragon:'fire',blazeunit:'fire',reddragon:'fire',darkdragon:'dark',archdemon:'dark',vstriker:'beam',thunderking:'bolt',shadowcannon:'shell',tankroid:'shell',leviathan:'water',medusa:'beam',pikotan:'beam'};
+  const PC={fire:'#ff8a3d',dark:'#a04aff',beam:'#ff5470',bolt:'#ffe14d',shell:'#d0d0d0',water:'#3ec9ff'};
+  const SC={cyclops:'#e8d9a0',golem:'#c9b45a',kraken:'#3ec9ff',basilisk:'#baff5a',tankroid:'#ff8a3d',medusa:'#baff5a'};
+  // 必殺技の種類
+  const SPK={dragon:'fan',reddragon:'fan',blazeunit:'flame',darkdragon:'nova',archdemon:'meteor',vstriker:'beam',shadowcannon:'beam',cyclops:'smash',golem:'spin',tankroid:'charge',thunderking:'bolt',medusa:'gaze',pikotan:'beam',basilisk:'gaze',kraken:'pull',leviathan:'wall'};
+  const SPD={fan:'ほのおを おうぎ状に5はつ',flame:'ほのおを れんぞくで はきつづける',nova:'まわりを ふきとばす 大ばくはつ',beam:'つらぬく ごくぶとビーム',smash:'とびこんで じめんを たたきつける',spin:'からだごと ぐるぐる まわって なぎはらう(反動あり)',charge:'ぜんそくりょくの 重い とっしん',bolt:'あいての いちに いかずちを おとす',gaze:'にらんで うごきを とめる',pull:'しょくしゅで ひきよせて ダメージ',wall:'みずの かべを おしだす'};
+  const MR={nova:90,spin:70,smash:85,charge:200,gaze:170,pull:150};
+  let VH=500,VY=0,ph='idle',active=false,F=[],PJ=[],fx=[],rings=[],beams=[],warn=[],item=null,itT=500,T=0,wins=[0,0],rt=0,win=0,shake=0,rd=0,tm=0,ban=null,stg=0,mode='wild',cfg=null,ptr={};
+  const prs=[{d:0,h:0,p:0},{d:0,h:0,p:0}],inp=[0,1].map(()=>({x:0,y:0,d:0,h:0,p:0})),NOI={x:0,y:0,d:0,h:0,p:0};
+  const S=[{sx:52,sy:445,bx:256,by:455,hx:198,hy:455,px:140,py:455},{sx:248,sy:55,bx:44,by:45,hx:102,hy:45,px:160,py:45}]; // P2は向かい合わせ配置
+  // ---- 入力 ----
+  const pos=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left-cv.clientLeft)*W/cv.clientWidth,(e.clientY-r.top-cv.clientTop)*VH/cv.clientHeight+VY]};
+  function stick(e){const p=ptr[e.pointerId];if(!p||p.k!=='s')return;const[x,y]=pos(e),s=S[p.i],dx=x-s.sx,dy=y-s.sy,l=Math.hypot(dx,dy),m=Math.min(1,l/40);inp[p.i].x=l>6?dx/l*m:0;inp[p.i].y=l>6?dy/l*m:0}
+  cv.addEventListener('pointerdown',e=>{if(ph==='idle'||ph==='over')return;e.preventDefault();const[x,y]=pos(e);
+    for(let i=0;i<(mode==='versus'?2:1);i++){const s=S[i];
+      if(Math.hypot(x-s.bx,y-s.by)<28){inp[i].d=1;prs[i].d=T+12;ptr[e.pointerId]={i,k:'b'};return}
+      if(Math.hypot(x-s.hx,y-s.hy)<28){inp[i].h=1;prs[i].h=T+8;ptr[e.pointerId]={i,k:'h'};cv.setPointerCapture(e.pointerId);return}
+      if(Math.hypot(x-s.px,y-s.py)<28){inp[i].p=1;prs[i].p=T+12;ptr[e.pointerId]={i,k:'b'};return}
+      if(Math.hypot(x-s.sx,y-s.sy)<72){ptr[e.pointerId]={i,k:'s'};cv.setPointerCapture(e.pointerId);stick(e);return}}});
+  cv.addEventListener('pointermove',stick);
+  ['pointerup','pointercancel'].forEach(t=>cv.addEventListener(t,e=>{const p=ptr[e.pointerId];if(p){if(p.k==='s')inp[p.i].x=inp[p.i].y=0;if(p.k==='h')inp[p.i].h=0}delete ptr[e.pointerId]}));
+
+  // ---- キーボード操作(PC) ----
+  // 1P: WASD(1人プレイは矢印キーも可) / だっしゅ=Space・J・Z / ショット=K・X / ひっさつ=L・C
+  // 2P(2人対戦): 矢印キー / だっしゅ=, ショット=. ひっさつ=/
+  const KD={},KMV=[0,0];
+  function kmap(i){
+    if(i===0){const a=mode!=='versus';
+      return{u:['KeyW'].concat(a?['ArrowUp']:[]),d:['KeyS'].concat(a?['ArrowDown']:[]),l:['KeyA'].concat(a?['ArrowLeft']:[]),r:['KeyD'].concat(a?['ArrowRight']:[]),b:['Space','KeyJ','KeyZ'],h:['KeyK','KeyX'],p:['KeyL','KeyC']}}
+    return{u:['ArrowUp'],d:['ArrowDown'],l:['ArrowLeft'],r:['ArrowRight'],b:['Comma'],h:['Period'],p:['Slash']}}
+  const kany=(i,k)=>kmap(i)[k].some(c=>KD[c]);
+  function kmove(){for(let i=0;i<(mode==='versus'?2:1);i++){
+    let dx=(kany(i,'r')?1:0)-(kany(i,'l')?1:0),dy=(kany(i,'d')?1:0)-(kany(i,'u')?1:0);
+    if(dx||dy){const l=Math.hypot(dx,dy);inp[i].x=dx/l;inp[i].y=dy/l;KMV[i]=1}
+    else if(KMV[i]){inp[i].x=inp[i].y=0;KMV[i]=0}}}
+  function kreset(){for(const c in KD)delete KD[c];KMV[0]=KMV[1]=0;inp.forEach(p=>{p.x=p.y=p.h=0})}
+  const KGAME=new Set(['KeyW','KeyA','KeyS','KeyD','KeyJ','KeyK','KeyL','KeyZ','KeyX','KeyC','Space','Comma','Period','Slash','ArrowUp','ArrowDown','ArrowLeft','ArrowRight']);
+  addEventListener('keydown',e=>{
+    if(!active||!KGAME.has(e.code)||e.ctrlKey||e.metaKey||e.altKey)return;
+    e.preventDefault();
+    if(e.repeat)return;
+    KD[e.code]=1;
+    if(ph!=='idle'&&ph!=='over'){
+      for(let i=0;i<(mode==='versus'?2:1);i++){
+        if(kmap(i).b.includes(e.code)){inp[i].d=1;prs[i].d=T+12}
+        if(kmap(i).h.includes(e.code)){inp[i].h=1;prs[i].h=T+8}
+        if(kmap(i).p.includes(e.code)){inp[i].p=1;prs[i].p=T+12}}}
+    kmove()});
+  addEventListener('keyup',e=>{
+    if(!KGAME.has(e.code))return;
+    if(active)e.preventDefault();
+    delete KD[e.code];
+    for(let i=0;i<(mode==='versus'?2:1);i++){
+      if(kmap(i).h.includes(e.code)&&!kany(i,'h'))inp[i].h=0}
+    kmove()});
+  addEventListener('blur',kreset);
+  function fit(){const r=wrap.getBoundingClientRect();let h=r.height-4,w=h*300/VH;if(w>r.width-4){w=r.width-4;h=w*VH/300}if(h>0){cv.style.width=w+'px';cv.style.height=h+'px'}}
+  addEventListener('resize',fit);new ResizeObserver(fit).observe(wrap);
+  // ---- 音(WebAudioで生成) ----
+  let AC=null,bgmOn=true,seOn=true,bst=0;
+  try{const o=JSON.parse(localStorage.getItem('bumpOpt')||'{}');if(o.bgm===false)bgmOn=false;if(o.se===false)seOn=false}catch(e){}
+  const saveOpt=()=>{try{localStorage.setItem('bumpOpt',JSON.stringify({bgm:bgmOn,se:seOn}))}catch(e){}};
+  function tone(f,t,d,type,v,f2){if(!AC)return;const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.05)}
+  function noise(t,d,v){if(!AC)return;const n=AC.sampleRate*d|0,b=AC.createBuffer(1,n,AC.sampleRate),a=b.getChannelData(0);for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*(1-i/n);const s=AC.createBufferSource(),g=AC.createGain();s.buffer=b;g.gain.value=v;s.connect(g);g.connect(AC.destination);s.start(t)}
+  const MEL=[[523,0,659,0,784,0,659,0,587,0,698,0,880,0,698,0,523,0,659,0,784,0,1047,0,880,0,784,0,659,0,587,0],[220,0,0,262,0,220,0,0,330,0,294,0,262,0,0,0,220,0,0,262,0,220,0,0,392,0,349,0,330,0,294,0],[392,0,494,0,587,0,494,0,440,0,523,0,659,0,523,0,392,0,494,0,587,0,784,0,659,0,587,0,494,0,440,0],[330,330,0,392,0,330,0,262,294,294,0,349,0,294,0,247,330,330,0,392,0,440,0,392,349,0,330,0,294,0,262,0],[392,0,523,0,659,0,523,0,440,0,587,0,698,0,587,0,392,0,523,0,659,0,784,0,698,0,659,0,587,0,523,0]],ROOT=[131,110,98,123,131],WAV=['triangle','sawtooth','sine','square','triangle'];
+  function tick(){if(!bgmOn||!AC||AC.state!=='running')return;const sc=active?stg:4,t=AC.currentTime+.03,i=bst++%32,m=MEL[sc][i];
+    if(m)tone(m,t,.2,WAV[sc],.04);if(i%4===0)tone(ROOT[sc]*(i%8?1.5:1),t,.38,'sine',.08);if(i%8===0){noise(t,.05,.04);tone(90,t,.12,'sine',.1,45)}}
+  function sfx(k){if(!seOn||!AC||AC.state!=='running')return;const t=AC.currentTime+.01;
+    if(k==='shot')tone(700,t,.15,'square',.05,300);
+    else if(k==='hit'){noise(t,.06,.1);tone(240,t,.1,'square',.07,120)}
+    else if(k==='big'){noise(t,.3,.2);tone(120,t,.35,'sawtooth',.14,40)}
+    else if(k==='boom'){noise(t,.7,.3);tone(80,t,.6,'sawtooth',.2,30)}
+    else if(k==='vanish')tone(900,t,.6,'sine',.1,150);
+    else if(k==='heal')[523,659,784].forEach((f,i)=>tone(f,t+i*.07,.15,'triangle',.08));
+    else if(k==='spec')[392,523,659,784,1047].forEach((f,i)=>tone(f,t+i*.05,.18,'sawtooth',.07));
+    else if(k==='click')tone(880,t,.06,'square',.04,1200);
+    else if(k==='gacha'){noise(t,.5,.12);[392,440,494,523,587,659].forEach((f,i)=>tone(f,t+i*.08,.1,'square',.05))}
+    else if(k==='win')[523,659,784,1047].forEach((f,i)=>tone(f,t+i*.12,.25,'triangle',.09))}
+  function initAudio(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){return}setInterval(tick,230)}if(AC.state==='suspended')AC.resume()}
+  ['pointerdown','keydown'].forEach(e=>document.addEventListener(e,initAudio));
+  document.addEventListener('visibilitychange',()=>{if(!AC)return;if(document.hidden)AC.suspend();else AC.resume()});
+  function optUi(){document.querySelectorAll('[data-k=bgm]').forEach(b=>{b.textContent='♪BGM '+(bgmOn?'ON':'OFF');b.classList.toggle('off',!bgmOn)});document.querySelectorAll('[data-k=se]').forEach(b=>{b.textContent='SE '+(seOn?'ON':'OFF');b.classList.toggle('off',!seOn)})}
+  document.querySelectorAll('[data-k]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.k==='bgm')bgmOn=!bgmOn;else seOn=!seOn;saveOpt();optUi()}));optUi();
+  // ---- 戦闘 ----
+  const mkF=(i,id,o)=>{const ty=CHAR_DB[id].type;return{i,id,t:TY[ty],rapid:ty==='rapid',ct:ty==='counter',rec:ty==='recoil',cg:ty==='charge'?1.6:1,rg:RNG[id],hp:o.hp,mh:o.hp,am:o.am,x:CX,y:i?175:335,vx:0,vy:0,dc:0,sc:0,ds:0,sdm:1,fl:0,hc:0,dd:-1,dt:0,sg:0,st:0,sw:0,bt:0,ab:0,si:0,col:i?'#4aa3ff':'#e0453a'}};
+  function newRound(){F=[mkF(0,cfg.ids[0],cfg.A),mkF(1,cfg.ids[1],cfg.B)];ph='ready';rd=75;tm=3600;fx=[];PJ=[];rings=[];beams=[];warn=[];item=null;itT=240;ban=null;inp.forEach(p=>{p.x=p.y=p.d=p.h=p.p=0})}
+  function spark(x,y,n){for(let i=0;i<n;i++){const a=Math.random()*6.3,s=1+Math.random()*4;fx.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:18+Math.random()*10|0})}}
+  function kill(f,why){if(ph!=='play')return;f.hp=0;f.dd=CHAR_ORDER.indexOf(f.id)%3;f.dt=0;const w=1-f.i;win=w;wins[w]++;ph='round';rt=130;shake=16;
+    if(f.dd===1){spark(f.x,f.y,70);sfx('boom')}else if(f.dd===2){const o=F[w],l=Math.hypot(f.x-o.x,f.y-o.y)||1;f.vx=(f.x-o.x)/l*9;f.vy=(f.y-o.y)/l*9;sfx('big')}else{spark(f.x,f.y,20);sfx('vanish')}
+    bmsg.textContent=(why||'')+(mode==='versus'?'P'+(w+1):w?'てき':'あなた')+(WINS>1?' が ポイント! '+wins[0]+' - '+wins[1]:' の かち!')}
+  function hurt(f,d,src,q){if(f.dd>=0||ph!=='play'||f.bur>0)return;if(f.shd>0)d*=.25;f.hp-=d;if(!q)f.fl=7;f.sg=Math.min(100,f.sg+d*.7*f.cg);
+    if(src){src.sg=Math.min(100,src.sg+d*.5*src.cg);if(f.ct&&Math.random()<.25){hurt(src,3*f.am,null,1);spark(src.x,src.y,6)}}
+    if(f.hp<=0)kill(f)}
+  const bad=p=>(stg===3&&BLD.some(([bx,by,bw,bh])=>p.x>bx-14&&p.x<bx+bw+14&&p.y>by-14&&p.y<by+bh+14))||(stg===1&&LAVA.some(([lx,ly,lr])=>Math.hypot(p.x-lx,p.y-ly)<lr+14));
+  const col=f=>PC[f.rg]||SC[f.id]||'#fff';
+  function shoot(f,a,s,dm,r,l,ex){PJ.push(Object.assign({x:f.x,y:f.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,o:f.i,c:col(f),l,d:dm*f.am,r,hm:0,fk:1},ex||{}))}
+  function stun(o,n){if(o.si>0)return;o.st=n;o.si=n+100}
+  function area(f,o,r,dm,kb,stn){const d=Math.hypot(o.x-f.x,o.y-f.y)||1;rings.push({x:f.x,y:f.y,r:4,mr:r,c:col(f),l:20});spark(f.x,f.y,22);shake=Math.max(shake,8);sfx('big');
+    if(d<r+PR&&o.dd<0){hurt(o,dm*f.am,f);o.vx+=(o.x-f.x)/d*kb;o.vy+=(o.y-f.y)/d*kb;if(stn)o.st=stn}}
+  function spec(f,o){const k=SPK[f.id]||'fan',dx=o.x-f.x,dy=o.y-f.y,d=Math.hypot(dx,dy)||1,ux=dx/d,uy=dy/d,ba=Math.atan2(uy,ux);
+    f.sg=0;ban={t:CHAR_DB[f.id].special.name,l:80,i:f.i};sfx('spec');shake=6;
+    if(k==='fan')for(let i=-2;i<=2;i++)shoot(f,ba+i*.22,5,4.5,5,90);
+    else if(k==='flame')f.bt=42;
+    else if(k==='nova')area(f,o,85,28,11);
+    else if(k==='beam')shoot(f,ba,9,20,9,70,{p:1,fk:1.2});
+    else if(k==='smash'){f.vx=ux*5;f.vy=uy*5;f.sw=22;f.swd=[66,24,12,26]}
+    else if(k==='spin'){area(f,o,58,12,9);f.sw=18;f.swd=[58,12,10,0];hurt(f,3,null,1)}
+    else if(k==='charge'){f.vx=ux*10;f.vy=uy*10;f.ds=28;f.sdm=2.2;spark(f.x,f.y,12)}
+    else if(k==='bolt')warn.push({x:o.x,y:o.y,l:50,o:f.i,dm:30*f.am,c:col(f)});
+    else if(k==='gaze'){beams.push({x1:f.x,y1:f.y,x2:o.x,y2:o.y,l:16,c:col(f)});if(d<190&&o.dd<0){hurt(o,(f.id==='basilisk'?12:6)*f.am,f);stun(o,60)}}
+    else if(k==='pull'){rings.push({x:o.x,y:o.y,r:4,mr:50,c:col(f),l:20});if(d<170&&o.dd<0){hurt(o,14*f.am,f);o.vx=-ux*14;o.vy=-uy*14;stun(o,15)}}
+    else if(k==='wall'){for(let i=-2;i<=2;i++)shoot(f,ba,3.2,7,9,100,{p:1,x:f.x-uy*i*26,y:f.y+ux*i*26})}
+    else if(k==='barrier'){f.shd=260;f.hp=Math.min(f.mh,f.hp+f.mh*.12);rings.push({x:f.x,y:f.y,r:4,mr:46,c:'#ffe14d',l:24});spark(f.x,f.y,14)}
+    else if(k==='burrow'){f.bur=46;spark(f.x,f.y,16)}
+    else if(k==='rain'){for(let i=0;i<7;i++)warn.push({x:Math.max(AX0+20,Math.min(AX1-20,o.x+(Math.random()-.5)*150)),y:Math.max(AY0+20,Math.min(AY1-20,o.y+(Math.random()-.5)*110)),l:26+i*9,o:f.i,dm:8*f.am,c:col(f)})}
+    else if(k==='meteor'){const cl=(v,a,b)=>Math.max(a,Math.min(b,v));for(let i=0;i<8;i++){const a=i*Math.PI/4+Math.random()*.3;warn.push({x:cl(o.x+Math.cos(a)*78,AX0+24,AX1-24),y:cl(o.y+Math.sin(a)*78,AY0+24,AY1-24),l:22+i*7,o:f.i,dm:6*f.am,c:'#ff7a3a',r:40})}
+      warn.push({x:cl(o.x,AX0+40,AX1-40),y:cl(o.y,AY0+40,AY1-40),l:92,o:f.i,dm:15*f.am,c:'#ff2a5a',r:78,big:1});shake=10}
+    else if(k==='burst'){for(let i=0;i<12;i++)shoot(f,i*Math.PI/6,4.2,6,5,110);f.rw=34}}
+  function ai(f,o){const dx=o.x-f.x,dy=o.y-f.y,d=Math.hypot(dx,dy)||1;let tx=dx/d,ty=dy/d,h=0,p=0;
+    if(f.rg&&d<110){tx=-tx;ty=-ty;if(f.x<AX0+28||f.x>AX1-28)tx=(CX-f.x)/150;if(f.y<AY0+28||f.y>AY1-28)ty=(CY-f.y)/115}
+    const sw=Math.sin(T/40)*.5,nx=tx-ty*sw,ny=ty+tx*sw*.3;tx=nx;ty=ny;
+    if(f.rg&&d>60&&f.sc<=0&&!f.ab&&Math.random()<.04)f.ab=f.rapid?28:1;
+    if(f.ab>0){f.ab--;h=1}
+    const k=SPK[f.id];if(f.sg>=100&&Math.random()<.03&&(!MR[k]||d<MR[k]))p=1;
+    return{x:tx*.85,y:ty*.85,h,p,d:d<80&&f.dc<=0&&Math.random()<.035?1:0}}
+  function finish(){ph='over';if(mode==='versus'){sfx('win');if(win===1)[battle.playerId,battle.enemyId]=[battle.enemyId,battle.playerId];active=false;onWinBattle()}
+    else if(win===0){sfx('win');active=false;onWinBattle()}else{active=false;onLoseBattle()}}
+  function step(){T++;
+    fx.forEach(f=>{f.x+=f.vx;f.y+=f.vy;f.l--});fx=fx.filter(f=>f.l>0);rings.forEach(r=>{r.r+=(r.mr-r.r)*.25;r.l--});rings=rings.filter(r=>r.l>0);beams.forEach(b=>b.l--);beams=beams.filter(b=>b.l>0);if(shake>0)shake--;if(ban&&--ban.l<=0)ban=null;
+    if(ph==='ready'){if(--rd<=0){ph='play';sfx('shot')}return}
+    if(ph==='round'){F.forEach(f=>{if(f.dd>=0){f.dt++;f.x+=f.vx;f.y+=f.vy;f.vx*=.96;f.vy*=.96}});if(--rt<=0){if(wins[win]>=WINS)finish();else newRound()}return}
+    if(ph!=='play')return;
+    if(--tm<=0){const a=F[0].hp/F[0].mh,b=F[1].hp/F[1].mh;kill(a<b||(a===b&&Math.random()<.5)?F[0]:F[1],'タイムアップ! ');return}
+    F.forEach((f,k)=>{const o=F[1-k],c=f.st>0?NOI:(f.i===1&&mode!=='versus')?ai(f,o):inp[f.i],ac=(1-FR[stg])*2.5*f.t.sp;
+      if(f.st>0){inp[f.i].d=inp[f.i].p=0}f.vx+=c.x*ac;f.vy+=c.y*ac;if(stg===2){f.vx+=Math.cos(T/180)*.04;f.vy+=Math.sin(T/230)*.04}
+      let dx=c.x,dy=c.y,l=Math.hypot(dx,dy);if(l<.25){dx=o.x-f.x;dy=o.y-f.y;l=Math.hypot(dx,dy)||1}
+      if(c.d&&f.dc<=0){f.vx=dx/l*7.5*f.t.dp;f.vy=dy/l*7.5*f.t.dp;f.ds=16;f.dc=f.t.cd;f.sdm=1;spark(f.x,f.y,6)}
+      if(c.h&&f.sc<=0&&f.rg){const r=f.rapid,ba=Math.atan2(dy,dx),ao=Math.atan2(o.y-f.y,o.x-f.x),dA=Math.atan2(Math.sin(ao-ba),Math.cos(ao-ba));shoot(f,(Math.abs(dA)<.6?ao:ba)+(r?(Math.random()-.5)*.1:0),r?5:4.2,r?1.5:5,r?3:4,100,{fk:r?.5:1.3});f.sc=r?10:48;if(!r||T%3===0)sfx('shot')}
+      if(c.p&&f.sg>=100)spec(f,o);
+      if(f.bt>0){f.bt--;if(f.bt%3===0)shoot(f,Math.atan2(o.y-f.y,o.x-f.x)+(Math.random()-.5)*.3,5.5,2,4,60,{fk:.3})}
+      if(f.sw>0&&--f.sw===0)area(f,o,...f.swd);
+      if(f.shd>0){f.shd--;if(f.shd%12===0)rings.push({x:f.x,y:f.y,r:PR,mr:PR+8,c:'#ffe14d',l:10})}
+      if(f.bur>0){f.x+=(o.x-f.x)*.07;f.y+=(o.y-f.y)*.07;if(--f.bur===0){area(f,o,64,26,12,30);spark(f.x,f.y,24)}}
+      if(f.rw>0&&--f.rw===0)for(let i=0;i<12;i++)shoot(f,i*Math.PI/6+.26,3.4,6,5,120,{hm:.05});
+      if(f.sg>=100&&T%4===0)fx.push({x:f.x+(Math.random()-.5)*20,y:f.y+8,vx:0,vy:-1.5,l:14});
+      f.sg=Math.min(100,f.sg+.03*f.cg);
+      c.d=c.p=0;f.dc--;f.sc--;f.ds--;f.fl--;f.hc--;if(f.st>0)f.st--;if(f.si>0)f.si--;if(f.ds<=0)f.sdm=1;f.vx*=FR[stg];f.vy*=FR[stg];f.x+=f.vx;f.y+=f.vy;
+      if(f.x<AX0+PR){f.x=AX0+PR;f.vx=Math.abs(f.vx)*.5}if(f.x>AX1-PR){f.x=AX1-PR;f.vx=-Math.abs(f.vx)*.5}
+      if(f.y<AY0+PR){f.y=AY0+PR;f.vy=Math.abs(f.vy)*.5}if(f.y>AY1-PR){f.y=AY1-PR;f.vy=-Math.abs(f.vy)*.5}
+      if(stg===3)BLD.forEach(([bx,by,bw,bh])=>{const nx=Math.max(bx,Math.min(f.x,bx+bw)),ny=Math.max(by,Math.min(f.y,by+bh)),ex=f.x-nx,ey=f.y-ny,d=Math.hypot(ex,ey);if(d<PR){f.x=nx+(d?ex/d:0)*PR;f.y=ny+(d?ey/d:-1)*PR;f.vx*=.5;f.vy*=.5}});
+      if(stg===1&&LAVA.some(([lx,ly,lr])=>Math.hypot(f.x-lx,f.y-ly)<lr+4)){hurt(f,.12,null,1);if(T%10===0)spark(f.x,f.y+8,2)}
+      if(item&&Math.hypot(f.x-item.x,f.y-item.y)<PR+8){f.hp=Math.min(f.mh,f.hp+f.mh*.3);f.sg=Math.min(100,f.sg+30);item=null;itT=600;sfx('heal');spark(f.x,f.y,10)}});
+    if(ph!=='play')return;
+    warn.forEach(w=>{if(--w.l<=0){const t=F[1-w.o],R=w.r||42;rings.push({x:w.x,y:w.y,r:4,mr:R,c:w.c,l:w.big?26:18});if(w.big)rings.push({x:w.x,y:w.y,r:2,mr:R*.6,c:'#ffe9a0',l:20});spark(w.x,w.y,w.big?46:20);shake=w.big?16:8;sfx('big');if(t.dd<0&&Math.hypot(t.x-w.x,t.y-w.y)<R+PR){hurt(t,w.dm,F[w.o]);stun(t,w.big?50:35)}}});warn=warn.filter(w=>w.l>0);
+    if(ph!=='play')return;
+    const a=F[0],b=F[1],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);
+    if(d<PR*2&&d>0){const nx=dx/d,ny=dy/d,ov=PR*2-d;a.x-=nx*ov/2;a.y-=ny*ov/2;b.x+=nx*ov/2;b.y+=ny*ov/2;
+      const rv=(a.vx-b.vx)*nx+(a.vy-b.vy)*ny;
+      if(rv>.3&&a.hc<=0&&b.hc<=0){const da=a.ds>0,db=b.ds>0;
+        [[a,b,1,da],[b,a,-1,db]].forEach(([x,y,s,dsh])=>{const pw=(1.2+rv*.6)*(dsh?1.6:1)/y.t.m;y.vx+=nx*s*pw;y.vy+=ny*s*pw;y.hc=dsh?26:8;hurt(y,(1.5+rv*.5+(dsh?(9+rv)*(x.rg?1:1.25)*x.sdm:0))*x.am,x);if(dsh){x.dc=Math.max(x.dc,45);if(x.rec)hurt(x,1.6,null,1)}});
+        if(da){a.vx*=.3;a.vy*=.3;a.ds=0}if(db){b.vx*=.3;b.vy*=.3;b.ds=0}
+        spark((a.x+b.x)/2,(a.y+b.y)/2,14);shake=Math.min(14,4+rv);sfx(da||db?'big':'hit')}}
+    PJ.forEach(p=>{const t=F[1-p.o];
+      if(p.hm&&t.dd<0){const sp=Math.hypot(p.vx,p.vy),a=Math.atan2(p.vy,p.vx),ta=Math.atan2(t.y-p.y,t.x-p.x),da=Math.atan2(Math.sin(ta-a),Math.cos(ta-a)),n=a+Math.max(-p.hm,Math.min(p.hm,da));p.vx=Math.cos(n)*sp;p.vy=Math.sin(n)*sp}
+      p.x+=p.vx;p.y+=p.vy;p.l--;
+      if(p.x<AX0||p.x>AX1||p.y<AY0||p.y>AY1||(stg===3&&BLD.some(([bx,by,bw,bh])=>p.x>bx&&p.x<bx+bw&&p.y>by&&p.y<by+bh)))p.l=0;
+      else if(t.dd<0&&!p.hit&&Math.hypot(p.x-t.x,p.y-t.y)<PR+p.r){if(p.p)p.hit=1;else p.l=0;t.vx+=p.vx*p.fk;t.vy+=p.vy*p.fk;if(t.ds>0){t.ds=0;t.sdm=1}t.fl=7;spark(p.x,p.y,8);sfx('hit');hurt(t,p.d,F[p.o])}});
+    PJ=PJ.filter(p=>p.l>0);
+    if(!item&&--itT<=0){let n=0;do{item={x:AX0+30+Math.random()*(AX1-AX0-60),y:AY0+30+Math.random()*(AY1-AY0-60)}}while(bad(item)&&++n<20)}}
+  // ---- 描画 ----
+  function fighter(f){const q=SPS[f.id],w=q.n.width*2.1,h=q.n.height*2.1;let al=f.bur>0?.22:1,sc=1;
+    if(f.dd===0)al=Math.max(0,1-f.dt/50);else if(f.dd===1&&f.dt>2)return;else if(f.dd===2){sc=Math.max(.1,1-f.dt/70);al=sc}
+    cx.save();cx.globalAlpha=al;cx.translate(f.x,f.y);cx.scale(sc,sc);
+    if(f.dd<0){cx.fillStyle='#0005';cx.beginPath();cx.ellipse(2,PR*.7,PR,PR*.4,0,0,7);cx.fill();
+      cx.strokeStyle=f.col;cx.lineWidth=2;cx.beginPath();cx.ellipse(0,PR*.65,PR*.9,PR*.35,0,0,7);cx.stroke();
+      if(f.sg>=100){cx.strokeStyle='#ffcb47';cx.lineWidth=3;cx.globalAlpha=.5+.4*Math.sin(T/4);cx.beginPath();cx.arc(0,0,PR+6+Math.sin(T/5)*2,0,7);cx.stroke();cx.globalAlpha=al}}
+    const jy=f.sw>0&&f.swd&&f.swd[0]>60?-Math.sin(f.sw/22*Math.PI)*16:0;
+    if(f.dd<0){cx.globalAlpha=.6*al;[[-1.6,0],[1.6,0],[0,-1.6],[0,1.6]].forEach(([ox,oy])=>cx.drawImage(q.w,-w/2+ox,-h/2-3+oy+jy,w,h));cx.globalAlpha=al}
+    cx.drawImage(q.n,-w/2,-h/2-3+jy,w,h);
+    if(f.fl>0){cx.globalAlpha=.75*al;cx.drawImage(q.w,-w/2,-h/2-3,w,h)}
+    if(f.st>0&&f.dd<0){cx.globalAlpha=1;cx.fillStyle='#ffe14d';cx.font='bold 12px DotGothic16, sans-serif';cx.textAlign='center';cx.fillText('✦',Math.cos(T/5)*14,-h/2-2);cx.fillText('✦',-Math.cos(T/5)*14,-h/2-2)}
+    cx.restore()}
+  function disc(x,y,r,c){cx.fillStyle=c;const C=3,n=Math.ceil(r/C),X=Math.round(x),Y=Math.round(y);for(let j=-n;j<n;j++)for(let i=-n;i<n;i++)if(Math.hypot(i*C+1.5,j*C+1.5)<=r)cx.fillRect(X+i*C,Y+j*C,C,C)}
+  function ring(x,y,r,t,c){cx.fillStyle=c;const C=3,n=Math.ceil(r/C),X=Math.round(x),Y=Math.round(y);for(let j=-n;j<n;j++)for(let i=-n;i<n;i++){const d=Math.hypot(i*C+1.5,j*C+1.5);if(d<=r&&d>r-t)cx.fillRect(X+i*C,Y+j*C,C,C)}}
+  function pbtn(x,y,r,on,pr,c,tx){const o=pr?3:0;if(pr)disc(x,y+o,r+4,'#ffffff');else disc(x,y+4,r,'#05030a');disc(x,y+o,r,'#1a0f06');disc(x,y+o,r-4,pr?c[2]:on?c[0]:c[1]);
+    if(!pr&&on){cx.fillStyle='#ffffffb0';cx.fillRect(x-r*.5|0,y-r*.5|0,6,3);cx.fillRect(x-r*.5|0,(y-r*.5|0)+3,3,3)}
+    cx.fillStyle=on||pr?'#1a1008':'#c9b8b8';cx.font='bold 9px DotGothic16, sans-serif';cx.textAlign='center';cx.fillText(tx,x,y+o+3)}
+  function ctl(i){const s=S[i],p=inp[i],q=prs[i],f=F[i],mv=p.x||p.y,rdy=f&&f.sg>=100;cx.save();
+    ring(s.sx,s.sy,42,3,mv?'#ffe27a':'#ffffffcc');disc(s.sx,s.sy,38,'#ffffff18');
+    const kx=s.sx+p.x*40,ky=s.sy+p.y*40;disc(kx,ky+3,16,'#05030a');disc(kx,ky,16,'#1a0f06');disc(kx,ky,12,mv?'#ffe27a':'#e8e0f0');cx.fillStyle='#fff';cx.fillRect(kx-6|0,ky-6|0,4,3);
+    pbtn(s.bx,s.by,26,f&&f.dc<=0,T<q.d,['#ffcb47','#7a6a40','#fff2a8'],'だっしゅ');
+    pbtn(s.hx,s.hy,26,f&&f.rg&&f.sc<=0,p.h||T<q.h,['#7ad0ff','#3a6a80','#d8f4ff'],f&&f.rg?(f.rapid?'れんしゃ':'ショット'):'なし');
+    if(rdy)ring(s.px,s.py,33,3,T%20<10?'#ffcb47':'#ff6a3d');
+    pbtn(s.px,s.py,26,rdy,T<q.p,['#ff8a3d','#6a3a3a','#ffe0a0'],'ひっさつ');cx.restore()}
+  function hud(f,ly,by){const r=Math.max(0,f.hp/f.mh),i=f.i;cx.textAlign='left';cx.font='bold 11px DotGothic16, sans-serif';cx.fillStyle=f.col;
+    cx.fillText((WINS>1?'●'.repeat(wins[i])+'○'.repeat(WINS-wins[i])+' ':'')+(mode==='versus'?'P'+(i+1)+' ':i?'てき ':'')+cfg.nm[i],12,ly);
+    cx.textAlign='right';cx.fillStyle='#fff';cx.fillText('HP '+Math.ceil(f.hp),288,ly);
+    cx.fillStyle='#0009';cx.fillRect(12,by,276,8);cx.fillStyle=r>.5?'#5fd35f':r>.25?'#ffcb47':'#ff4a4a';cx.fillRect(12,by,276*r,8);
+    cx.fillStyle='#0009';cx.fillRect(12,by+10,276,4);cx.fillStyle=f.sg>=100?(T%12<6?'#ff6a3d':'#ffcb47'):'#c9a040';cx.fillRect(12,by+10,276*f.sg/100,4)}
+
+  function mkMeat(){const w=24,h=20,g=Array.from({length:h},()=>Array(w).fill(0)),A=[10,10],E=[19,14.5],ux=.876,uy=.482,nx=-.482,ny=.876,vx=E[0]-A[0],vy=E[1]-A[1];
+    const seg=(px,py)=>{const t=Math.max(0,Math.min(1,((px-A[0])*vx+(py-A[1])*vy)/(vx*vx+vy*vy)));return Math.hypot(px-A[0]-vx*t,py-A[1]-vy*t)};
+    const L=[[E[0]+ux*1.6+nx*2,E[1]+uy*1.6+ny*2],[E[0]+ux*1.6-nx*2,E[1]+uy*1.6-ny*2]];
+    for(let j=0;j<h;j++)for(let i=0;i<w;i++){const px=i+.5,py=j+.5;if(seg(px,py)<=1.5||L.some(([a,b])=>Math.hypot(px-a,py-b)<=2.4))g[j][i]=((px-E[0])*nx+(py-E[1])*ny)>0?6:5}
+    for(let j=0;j<h;j++)for(let i=0;i<w;i++){const dx=(i+.5-8.5)/8,dy=(j+.5-8)/7.2,d=dx*dx+dy*dy;if(d<=1)g[j][i]=d>.62&&dx+dy>.2?4:d<.28&&dx+dy<-.3?3:2}
+    [[6,4],[7,4],[5,5]].forEach(([i,j])=>g[j][i]=7);[[7,8],[10,8]].forEach(([i,j])=>g[j][i]=8);[[8,9],[9,9]].forEach(([i,j])=>g[j][i]=9);[[6,9],[11,9]].forEach(([i,j])=>g[j][i]=10);
+    const o=g.map(r=>r.slice());for(let j=0;j<h;j++)for(let i=0;i<w;i++)if(!g[j][i])for(const[a,b]of[[1,0],[-1,0],[0,1],[0,-1]]){const y=j+a,x=i+b;if(y>=0&&y<h&&x>=0&&x<w&&g[y][x])o[j][i]=1}
+    const P={1:'#5a2410',2:'#f0704a',3:'#ff9f78',4:'#c4482a',5:'#fff6e0',6:'#e8cfa0',7:'#fff',8:'#3a1408',9:'#7a2a14',10:'#ff7f9a'},e=document.createElement('canvas');e.width=w;e.height=h;const x=e.getContext('2d');
+    o.forEach((r,j)=>r.forEach((v,i)=>{if(v){x.fillStyle=P[v];x.fillRect(i,j,1,1)}}));return e}
+  const meatC=mkMeat();
+  const dropMeat=(()=>{const g=MEAT_ICON,e=document.createElement('canvas');e.width=g[0].length;e.height=g.length;const x=e.getContext('2d');g.forEach((r,j)=>r.forEach((v,i)=>{if(v){x.fillStyle=MEAT_PALETTE[v];x.fillRect(i,j,1,1)}}));return e})();
+  // ---- ドット絵ステージ ----
+  let bgc=null,bldc=null;
+  const hs=(a,b,c)=>{let n=Math.imul(a+99,374761393)+Math.imul(b+99,668265263)+Math.imul(c+7,1274126177)|0;n=Math.imul(n^(n>>>13),1274126177);return((n^(n>>>16))>>>0)/4294967296};
+  function mkBg(s){const e=document.createElement('canvas');e.width=AX1-AX0;e.height=AY1-AY0;const x=e.getContext('2d'),C=4,cw=e.width/C|0,ch=e.height/C|0;
+    if(s===0||s===3){x.fillStyle=s===0?'#3f7a3a':'#4a4a62';x.fillRect(0,0,e.width,e.height);if(s===0){x.fillStyle='#2f6a2b';for(let k=0;k<45;k++)x.fillRect((k*97)%270+4,(k*53)%220+4,3,3)}return e}
+    for(let j=0;j<ch;j++)for(let i=0;i<cw;i++){const r=hs(i,j,s);let c;
+      if(s===1){c=r<.15?'#3a1a10':r>.9?'#62341f':'#4a2418';if(hs(i>>2,j>>2,7)>.78&&r>.45)c='#2a1008';if(r>.992)c='#ff8a3d'}
+      else{c=(j>>1)%2?'#1d5580':'#215e8c';if(r>.97)c='#5aa8d8'}
+      x.fillStyle=c;x.fillRect(i*C,j*C,C,C)}return e}
+  function mkBld(w,h,s){const e=document.createElement('canvas');e.width=w;e.height=h;const x=e.getContext('2d');x.fillStyle='#8890aa';x.fillRect(0,0,w,h);x.fillStyle='#ffe98a';for(let i=6;i<w-4;i+=10)for(let j=6;j<h-4;j+=10)x.fillRect(i,j,4,4);x.strokeStyle='#1a1a2a';x.lineWidth=2;x.strokeRect(1,1,w-2,h-2);return e}
+  function lava(x,y,r){const C=4,n=Math.ceil((r+8)/C);for(let j=-n;j<n;j++)for(let i=-n;i<n;i++){const px=x+i*C,py=y+j*C,d=Math.hypot(i*C+2,j*C+2);if(d>r+7)continue;
+    if(d>r){cx.fillStyle=hs(i,j,5)<.3?'#5a2a18':'#2e130b';cx.fillRect(px,py,C,C);continue}
+    const q=Math.sin(i*1.3+T/13)+Math.sin(j*1.7-T/10)+Math.sin((i+j)*.9+T/17)+hs(i,j,9)*.8;
+    cx.fillStyle=d>r-5?'#c43a12':q>2.2?'#ffe27a':q>1.2?'#ffb02e':q>0?'#ff7a1f':'#e5501a';cx.fillRect(px,py,C,C)}}
+  function arena(){if(bgc)cx.drawImage(bgc,AX0,AY0);
+    if(stg===2){cx.fillStyle='#7fc4e880';for(let y=AY0+10;y<AY1;y+=20)for(let x=0;x<AX1-AX0;x+=4)if(Math.sin(x/9+y)>.2)cx.fillRect(AX0+x,y+Math.round(Math.sin(x/12+T/18+y))*4,4,2)}
+    if(stg===1)LAVA.forEach(([x,y,r])=>lava(x,y,r));
+    if(stg===3&&bldc)BLD.forEach(([x,y,w,h],i)=>{cx.drawImage(bldc[i],x,y)});
+    cx.strokeStyle='#0a0612';cx.lineWidth=4;cx.strokeRect(AX0-2,AY0-2,AX1-AX0+4,AY1-AY0+4)}
+  function draw(){
+    cx.save();cx.translate(0,-VY);if(shake)cx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+    cx.fillStyle='#241a3a';cx.fillRect(0,VY,W,H);cx.fillStyle='#ffffff10';for(let y=0;y<H;y+=36)cx.fillRect(0,y,W,2);
+    arena();
+    if(item){const x=item.x|0,y=(item.y+Math.sin(T/12)*2)|0,P=(c,a,b,u,v)=>{cx.fillStyle=c;cx.fillRect(x+a,y+b,u,v)};cx.fillStyle='#0004';cx.beginPath();cx.ellipse(x+1,y+14,11,3,0,0,7);cx.fill();cx.drawImage(dropMeat,x-19,y-16,38,32);[[15,-14,0],[-16,10,20],[17,8,10]].forEach(([a,b,o])=>{const k=(T+o)%48;if(k<20){const r=k<10?k/10:(20-k)/10,l=1+Math.round(r*4);cx.fillStyle='#fff08a';cx.fillRect(x+a-l,y+b,l*2+1,1);cx.fillRect(x+a,y+b-l,1,l*2+1);cx.fillStyle='#fff';cx.fillRect(x+a,y+b,1,1)}})}
+    warn.forEach(w=>{cx.strokeStyle=w.c;cx.lineWidth=2;cx.globalAlpha=.5+.4*Math.sin(w.l/3);cx.beginPath();cx.arc(w.x,w.y,Math.max(2,(w.r||42)*(1-Math.min(w.l,60)/60)+8),0,7);cx.stroke();cx.beginPath();cx.arc(w.x,w.y,w.r||42,0,7);cx.stroke();cx.globalAlpha=1});
+    [...F].sort((p,q)=>p.y-q.y).forEach(fighter);
+    rings.forEach(r=>{cx.strokeStyle=r.c;cx.lineWidth=4;cx.globalAlpha=Math.min(1,r.l/12);cx.beginPath();cx.arc(r.x,r.y,r.r,0,7);cx.stroke();cx.globalAlpha=1});
+    beams.forEach(b=>{cx.strokeStyle=b.c;cx.lineWidth=b.l/2;cx.beginPath();cx.moveTo(b.x1,b.y1);cx.lineTo(b.x2,b.y2);cx.stroke()});
+    PJ.forEach(p=>{cx.fillStyle=p.c;if(p.r>=7){cx.beginPath();cx.arc(p.x,p.y,p.r,0,7);cx.fill()}else cx.fillRect(p.x-p.r/1.3,p.y-p.r/1.3,p.r*1.5,p.r*1.5);cx.fillStyle='#fff';cx.fillRect(p.x-1,p.y-1,2,2)});
+    fx.forEach(f=>{cx.fillStyle=`rgba(255,${200+f.l},80,${Math.min(1,f.l/18)})`;cx.fillRect(f.x,f.y,3,3)});
+    if(F.length){hud(F[1],118,122);hud(F[0],398,376);ctl(0);
+      cx.fillStyle='#fff9';cx.font='bold 11px DotGothic16, sans-serif';cx.textAlign='center';cx.fillText('TIME '+Math.max(0,Math.ceil(tm/60)),CX,VY+12);
+      if(mode==='versus')ctl(1)}
+    if(ban){cx.textAlign='center';cx.font='bold 18px DotGothic16, sans-serif';cx.lineWidth=5;cx.strokeStyle='#2a1a0e';const by=ban.i?CY-70:CY+80;cx.strokeText(ban.t+'!',CX,by);cx.fillStyle=ban.i?'#8fd0ff':'#ffb09a';cx.fillText(ban.t+'!',CX,by)}
+    if(ph==='ready'){cx.textAlign='center';cx.lineWidth=5;cx.strokeStyle='#2a1a0e';cx.font='bold 26px DotGothic16, sans-serif';const t=rd>30?'ROUND '+(wins[0]+wins[1]+1):'FIGHT!';cx.strokeText(t,CX,CY+8);cx.fillStyle='#ffcb47';cx.fillText(t,CX,CY+8)}
+    if(ph==='round'||ph==='over'){cx.textAlign='center';cx.lineWidth=5;cx.strokeStyle='#2a1a0e';cx.font='bold 26px DotGothic16, sans-serif';const t=(mode==='versus'?'P'+(win+1):win?'てき':'あなた')+(ph==='over'||WINS===1?' のかち!':' ポイント!');cx.strokeText(t,CX,CY+8);cx.fillStyle=win?'#4aa3ff':'#ff6a5a';cx.fillText(t,CX,CY+8)}
+    cx.restore()}
+  let last=performance.now(),acc=0;
+  (function loop(n){acc+=Math.min(50,n-last);last=n;if(active){while(acc>=16.67){step();acc-=16.67}draw()}else acc=0;requestAnimationFrame(loop)})(last);
+  return{
+    start(o){cfg=o;mode=o.mode;VH=mode==='versus'?500:408;VY=500-VH;cv.height=VH;cx.imageSmoothingEnabled=false;stg=SI[o.stageId]||0;bgc=mkBg(stg);bldc=BLD.map(([x,y,w,h],i)=>mkBld(w,h,i));wins=[0,0];T=0;ptr={};active=true;const nt=o.note||'';bmsg.textContent=nt;setTimeout(()=>{if(bmsg.textContent===nt)bmsg.textContent=''},5000);fit();newRound();draw()},
+    stop(){active=false;ph='idle'},
+    sfx,desc:id=>SPD[SPK[id]||'fan'],shot:id=>RNG[id]?(CHAR_DB[id].type==='rapid'?'あり(おしっぱなしで れんしゃ)':'あり(うつと のけぞる)'):'なし(ぶつかって たたかう)'
+  };
+  })();
+  function startBattle(playerId, opts){
+    opts = opts || {};
+    const mode = opts.mode || 'wild';
+    const stageId = opts.stageId || selectedStage;
+    const enemyId = opts.enemyId || CHAR_ORDER[rand(0,CHAR_ORDER.length-1)];
+    const statMult = opts.statMult || 1;
+    const pd = CHAR_DB[playerId], ed = CHAR_DB[enemyId];
+    const peff = effStats(playerId), pm = stageMultiplier(stageId, HABITAT[playerId]);
+    const mk = (e,m)=>({ hp:Math.round((60+e.hp*2.2)*m), am:Math.pow((e.atkLo+e.atkHi)/16,.6)*m });
+    const A = mk(peff, pm);
+    let B, enm = ed.name;
+    const cpu = !!opts.cpu;
+    if(mode==='versus'){ const eeff = effStats(enemyId); B = mk(eeff, stageMultiplier(stageId, HABITAT[enemyId])); enm += ' Lv.'+eeff.level; }
+    else { B = mk(ed, statMult); if(opts.isBoss) enm += ' BOSS'; }
+    battle = { mode, stageId, playerId, enemyId, isBoss: !!opts.isBoss, cpu };
+    let label;
+    if(mode==='scenario') label = `ストーリー第${state.scenario.stageIndex+1}ステージ：${STAGE_DB[stageId].name}`;
+    else if(mode==='tournament') label = `トーナメント${tournament.round+1}回戦：${STAGE_DB[stageId].name}`;
+    else if(mode==='versus') label = (cpu ? `CPUと たいせん：${STAGE_DB[stageId].name}` : `ふたりで対戦：${STAGE_DB[stageId].name}`);
+    else label = `${STAGE_DB[stageId].name}での戦い`;
+    $('battle-stage-label').textContent = label;
+    let note = (mode==='versus' && !cpu) ? 'P1(した)とP2(うえ)で それぞれ そうさ。HPを 0に したら ポイント(1本勝負)' : `${ed.name}と たいせん! ひっさつゲージが たまったら ひっさつを うて(1本勝負)`;
+    if(pm > 1) note = `（${STAGE_DB[stageId].name}の地の利で力が高まっている！）` + note;
+    else if(pm < 1) note = `（${STAGE_DB[stageId].name}は少し苦手…）` + note;
+    showScreen('battle');
+    BUMP.start({ mode: cpu ? 'vscpu' : mode, stageId, ids:[playerId,enemyId], A, B, nm:[`${pd.name} Lv.${peff.level}`, enm], boss:!!opts.isBoss, note });
+  }
+  $('bp-quit').addEventListener('click', ()=>{ BUMP.stop(); showScreen('hub'); });
+  document.addEventListener('click',e=>{ if(e.target.closest('button,.menu-card,.char-card,.mini-char-card,.stage-row>*')) BUMP.sfx('click'); });
+
+
+  function setResultButtons(kind){
+    const btnA = $('btn-result-hub');
+    const btnB = $('btn-result-again');
+    btnA.textContent = 'メニューへ';
+    btnA.onclick = ()=>{ $('overlay-result').classList.add('hidden'); showScreen('hub'); };
+    btnB.style.display = '';
+    if(kind === 'wild'){
+      btnB.textContent = 'もう一度たたかう';
+      btnB.onclick = ()=>{ $('overlay-result').classList.add('hidden'); openFighterSelect('wild'); };
+    } else if(kind === 'scenario-next'){
+      btnB.textContent = 'つぎのバトルへ';
+      btnB.onclick = ()=>{ $('overlay-result').classList.add('hidden'); runScenarioBattle(); };
+    } else if(kind === 'scenario-nextstage' || kind === 'scenario-complete'){
+      btnB.textContent = kind === 'scenario-complete' ? 'ストーリー選択へ' : 'つぎのステージへ';
+      btnB.onclick = ()=>{ $('overlay-result').classList.add('hidden'); showScreen('scenario'); };
+    } else if(kind === 'scenario-lose'){
+      btnB.textContent = 'もう一度ちょうせん';
+      btnB.onclick = ()=>{ $('overlay-result').classList.add('hidden'); runScenarioBattle(); };
+    } else if(kind === 'tournament-next'){
+      btnB.textContent = 'つぎの試合へ';
+      btnB.onclick = ()=>{ $('overlay-result').classList.add('hidden'); runTournamentRound(); };
+    } else if(kind === 'tournament-complete' || kind === 'tournament-lose'){
+      btnB.textContent = 'トーナメントへもどる';
+      btnB.onclick = ()=>{ $('overlay-result').classList.add('hidden'); showScreen('tournament'); };
+    } else if(kind === 'versus'){
+      btnB.textContent = 'もう一度対戦する';
+      btnB.onclick = ()=>{ $('overlay-result').classList.add('hidden'); startVersusBattle(); };
+    }
+  }
+  function onWinBattle(){
+    const ed = CHAR_DB[battle.enemyId];
+    log(`${ed.name}を たおした！`);
+    if(battle.mode === 'versus'){
+      $('result-title').textContent = 'しょうり！';
+      $('result-title').className = 'result-title win';
+      $('result-line1').innerHTML = `<b>${CHAR_DB[battle.playerId].name}</b>が<b>${ed.name}</b>に勝利した！`;
+      $('result-line2').textContent = '（たいせんモードのため、お金やずかんへの影響はない）';
+      setResultButtons('versus');
+      $('overlay-result').classList.remove('hidden');
+      return;
+    }
+    const coinGain = ed.rarity * 10;
+    state.coins += coinGain;
+    const captured = !state.owned[battle.enemyId];
+    if(captured){ state.owned[battle.enemyId] = true; state.levels[battle.enemyId] = 1; }
+    if(battle.mode === 'scenario'){ handleScenarioWin(ed, coinGain, captured); return; }
+    if(battle.mode === 'tournament'){ handleTournamentWin(ed, coinGain, captured); return; }
+    save();
+    $('result-title').textContent = 'しょうり！';
+    $('result-title').className = 'result-title win';
+    $('result-line1').innerHTML = `<b>${ed.name}</b>を倒し、お金を<b>${coinGain}円</b>手に入れた。`;
+    $('result-line2').textContent = captured ? `${ed.name}がずかんに登録され、使用できるようになった！` : '';
+    setResultButtons('wild');
+    $('overlay-result').classList.remove('hidden');
+  }
+  function handleScenarioWin(ed, coinGain, captured){
+    const capturedNote = captured ? `${ed.name}がずかんに登録された！` : '';
+    if(battle.isBoss){
+      const isLastStage = state.scenario.stageIndex === STAGE_ORDER.length - 1;
+      if(isLastStage){
+        state.scenario.clearedAll = true;
+        state.scenario.encounterIndex = NORMAL_PER_STAGE;
+        state.coins += 100;
+        save();
+        $('result-title').textContent = 'ストーリークリア！';
+        $('result-title').className = 'result-title win';
+        $('result-line1').innerHTML = `ボス<b>${ed.name}</b>を倒し、すべてのステージを制覇した！`;
+        $('result-line2').textContent = `${capturedNote} ボーナス100円を手に入れた！`;
+        setResultButtons('scenario-complete');
+      } else {
+        state.scenario.stageIndex += 1;
+        state.scenario.encounterIndex = 0;
+        save();
+        const nextName = STAGE_DB[STAGE_ORDER[state.scenario.stageIndex]].name;
+        $('result-title').textContent = 'ステージクリア！';
+        $('result-title').className = 'result-title win';
+        $('result-line1').innerHTML = `ボス<b>${ed.name}</b>を倒した！つぎのステージ「${nextName}」に進める。`;
+        $('result-line2').textContent = capturedNote;
+        setResultButtons('scenario-nextstage');
+      }
+    } else {
+      state.scenario.encounterIndex += 1;
+      save();
+      $('result-title').textContent = 'しょうり！';
+      $('result-title').className = 'result-title win';
+      $('result-line1').innerHTML = `<b>${ed.name}</b>に勝利し、お金を<b>${coinGain}円</b>手に入れた。`;
+      $('result-line2').textContent = `${capturedNote} つぎは同じステージのボスに挑める。`;
+      setResultButtons('scenario-next');
+    }
+    $('overlay-result').classList.remove('hidden');
+  }
+  function handleTournamentWin(ed, coinGain, captured){
+    tournament.round += 1;
+    const capturedNote = captured ? `${ed.name}がずかんに登録された！` : '';
+    if(tournament.round >= TOURNAMENT_ROUNDS){
+      const bonus = 200;
+      state.coins += bonus;
+      state.tournamentBestRound = TOURNAMENT_ROUNDS;
+      save();
+      $('result-title').textContent = '優勝！';
+      $('result-title').className = 'result-title win';
+      $('result-line1').innerHTML = `全${TOURNAMENT_ROUNDS}回戦を勝ち抜き、トーナメント優勝！`;
+      $('result-line2').textContent = `${capturedNote} 優勝ボーナス${bonus}円を手に入れた！`;
+      setResultButtons('tournament-complete');
+    } else {
+      if(tournament.round > state.tournamentBestRound) state.tournamentBestRound = tournament.round;
+      save();
+      $('result-title').textContent = `${tournament.round}回戦しょうり！`;
+      $('result-title').className = 'result-title win';
+      $('result-line1').innerHTML = `<b>${ed.name}</b>を破り、お金を<b>${coinGain}円</b>手に入れた。`;
+      $('result-line2').textContent = `${capturedNote} つぎは${tournament.round+1}回戦目。`;
+      setResultButtons('tournament-next');
+    }
+    $('overlay-result').classList.remove('hidden');
+  }
+  function onLoseBattle(){
+    const pd = CHAR_DB[battle.playerId], ed = CHAR_DB[battle.enemyId];
+    log(`${pd.name}は倒れてしまった…`);
+    $('result-title').textContent = 'はいぼく…';
+    $('result-title').className = 'result-title lose';
+    if(battle.mode === 'scenario'){
+      state.scenario.encounterIndex = 0;
+      save();
+      $('result-line1').textContent = `${ed.name}に敗れてしまった。このステージの最初からやり直そう。`;
+      $('result-line2').textContent = '';
+      setResultButtons('scenario-lose');
+    } else if(battle.mode === 'tournament'){
+      if(tournament.round > state.tournamentBestRound){ state.tournamentBestRound = tournament.round; save(); }
+      $('result-line1').textContent = `${ed.name}に敗れ、${tournament.round}回戦で敗退した。`;
+      $('result-line2').textContent = '';
+      setResultButtons('tournament-lose');
+    } else if(battle.mode === 'versus'){
+      $('result-line1').textContent = `${ed.name}に敗れた。（たいせんモードのため、お金やずかんへの影響はない）`;
+      $('result-line2').textContent = '';
+      setResultButtons('versus');
+    } else {
+      $('result-line1').textContent = `${ed.name}に敗れてしまった。お金は手に入らなかった。`;
+      $('result-line2').textContent = '装備や仲間を増やして、またいどもう。';
+      setResultButtons('wild');
+    }
+    $('overlay-result').classList.remove('hidden');
+  }
+
+  // ===================================================================
+  // SCENARIO MODE
+  // ===================================================================
+  const NORMAL_PER_STAGE = 2;
+  const STAGE_BOSS_ID = { plains:'reddragon', volcano:'thunderking', sea:'leviathan', city:'archdemon' };
+  const STAGE_BOSS_MULT = { plains:1.15, volcano:1.15, sea:1.15, city:1.15 };
+  let scenarioPlayerId = null;
+  function startScenarioEncounter(playerId){
+    scenarioPlayerId = playerId;
+    runScenarioBattle();
+  }
+  function runScenarioBattle(){
+    const stageId = STAGE_ORDER[state.scenario.stageIndex];
+    const idx = state.scenario.encounterIndex;
+    const bossId = STAGE_BOSS_ID[stageId];
+    let enemyId, mult, isBoss = false;
+    if(idx < NORMAL_PER_STAGE){
+      const pool = CHAR_ORDER.filter(id => id !== 'archdemon' && id !== bossId && id !== scenarioPlayerId);
+      enemyId = pool[rand(0, pool.length-1)];
+      mult = 1 + state.scenario.stageIndex*0.08 + idx*0.05;
+    } else {
+      enemyId = bossId;
+      mult = STAGE_BOSS_MULT[stageId];
+      isBoss = true;
+    }
+    startBattle(scenarioPlayerId, { mode:'scenario', enemyId, stageId, statMult:mult, isBoss });
+  }
+  function renderScenario(){
+    const restartBtn = $('btn-scenario-restart');
+    restartBtn.style.display = 'block';
+    const list = $('scenario-stage-list');
+    list.innerHTML = '';
+    STAGE_ORDER.forEach((stageId, idx)=>{
+      const st = STAGE_DB[stageId];
+      const cleared = idx < state.scenario.stageIndex;
+      const current = idx === state.scenario.stageIndex;
+      const locked = idx > state.scenario.stageIndex;
+      const isFinalDone = state.scenario.clearedAll && current;
+      let statusText;
+      if(isFinalDone) statusText = 'クリア済み（ボスに再挑戦できる）';
+      else if(cleared) statusText = 'クリア済み';
+      else if(current) statusText = `挑戦中（雑魚 ${Math.min(state.scenario.encounterIndex, NORMAL_PER_STAGE)}/${NORMAL_PER_STAGE} 撃破${state.scenario.encounterIndex>=NORMAL_PER_STAGE?'・ボス出現中':''}）`;
+      else statusText = 'ロック中';
+      const card = document.createElement('div');
+      card.className = 'char-card';
+      card.innerHTML = `<div class="portrait-box">${locked ? '<div class="zukan-lock" style="width:100%;height:100%;">🔒</div>' : stageSVG(stageId)}</div>
+        <div>
+          <div class="char-name">${idx+1}. ${st.name}</div>
+          <div class="char-tags"><span class="tag">${statusText}</span></div>
+        </div>`;
+      if(current){
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', ()=> openFighterSelect('scenario', { stageId }));
+      } else {
+        card.style.opacity = locked ? '.5' : '1';
+      }
+      list.appendChild(card);
+    });
+  }
+  let restartArmed = null;
+  $('btn-scenario-restart').addEventListener('click', ()=>{
+    const btn = $('btn-scenario-restart');
+    if(!restartArmed){
+      btn.textContent = 'もう一度タップで最初からやり直す';
+      restartArmed = setTimeout(()=>{ restartArmed = null; btn.textContent = 'ストーリーを最初から挑戦しなおす'; }, 4000);
+      return;
+    }
+    clearTimeout(restartArmed); restartArmed = null;
+    btn.textContent = 'ストーリーを最初から挑戦しなおす';
+    state.scenario = { stageIndex:0, encounterIndex:0, clearedAll:false };
+    save();
+    renderScenario();
+  });
+
+  // ===================================================================
+  // TOURNAMENT MODE
+  // ===================================================================
+  const TOURNAMENT_ROUNDS = 5;
+  const TOURNAMENT_MULT = [1.0, 1.1, 1.2, 1.3, 1.4];
+  let tournament = null;
+  function startTournament(playerId){
+    const pool = CHAR_ORDER.filter(id => id !== playerId && id !== 'archdemon');
+    const shuffled = pool.slice().sort(()=> Math.random()-0.5);
+    tournament = { playerId, round:0, opponents: shuffled.slice(0, TOURNAMENT_ROUNDS) };
+    runTournamentRound();
+  }
+  function runTournamentRound(){
+    const enemyId = tournament.opponents[tournament.round];
+    startBattle(tournament.playerId, { mode:'tournament', enemyId, stageId:TOURNAMENT_STAGE, statMult: TOURNAMENT_MULT[tournament.round] });
+  }
+  function renderTournamentScreen(){
+    $('tournament-best').textContent = state.tournamentBestRound > 0 ? `自己ベスト：${state.tournamentBestRound}回戦突破` : '';
+  }
+  $('btn-tournament-entry').addEventListener('click', ()=> openFighterSelect('tournament'));
+
+  // ===================================================================
+  // VERSUS MODE
+  // ===================================================================
+  let versusStage = 'plains';
+  let versusPlayerId = null;
+  let versusEnemyId = null;
+  let versusCpu = true;
+  function applyVersusMode(){
+    $('vs-cpu').classList.toggle('on', versusCpu); $('vs-2p').classList.toggle('on', !versusCpu);
+    $('vs-lab-a').textContent = versusCpu ? 'じぶんの キャラを えらぶ' : '1P(した)の キャラを えらぶ';
+    $('vs-lab-b').textContent = versusCpu ? 'CPUの キャラを えらぶ' : '2P(うえ)の キャラを えらぶ';
+    $('vs-hint').textContent = versusCpu ? 'ひとりで あそぶ。あいては CPU が うごかすよ。' : '1つの がめんを ふたりで つかう。した が 1P、うえ が 2P。';
+  }
+  $('vs-cpu').addEventListener('click', ()=>{ versusCpu = true; applyVersusMode(); });
+  $('vs-2p').addEventListener('click', ()=>{ versusCpu = false; applyVersusMode(); });
+  function renderVersusStageRow(){
+    if(!state.stages[versusStage]) versusStage = 'plains';
+    renderStageRowGeneric($('versus-stage-list'), versusStage, id=>{ versusStage = id; renderVersusStageRow(); });
+  }
+  function renderVersusCharPicker(rowEl, selectedId, onSelect){
+    rowEl.innerHTML = '';
+    ownedList().forEach(id=>{
+      const ch = CHAR_DB[id];
+      const card = document.createElement('div');
+      card.className = 'mini-char-card' + (selectedId===id ? ' selected' : '');
+      card.innerHTML = `<div class="portrait-box">${portraits[id]}</div><div class="char-name">${ch.name}</div>`;
+      card.addEventListener('click', ()=> onSelect(id));
+      rowEl.appendChild(card);
+    });
+  }
+  function updateVersusStartBtn(){
+    $('btn-versus-start').disabled = !(versusPlayerId && versusEnemyId);
+  }
+  function renderVersusPlayerRow(){
+    renderVersusCharPicker($('versus-player-row'), versusPlayerId, id=>{ versusPlayerId = id; renderVersusPlayerRow(); updateVersusStartBtn(); });
+  }
+  function renderVersusEnemyRow(){
+    renderVersusCharPicker($('versus-enemy-row'), versusEnemyId, id=>{ versusEnemyId = id; renderVersusEnemyRow(); updateVersusStartBtn(); });
+  }
+  function renderVersus(){
+    applyVersusMode();
+    versusPlayerId = null;
+    versusEnemyId = null;
+    renderVersusStageRow();
+    renderVersusPlayerRow();
+    renderVersusEnemyRow();
+    updateVersusStartBtn();
+  }
+  function startVersusBattle(){
+    startBattle(versusPlayerId, { mode:'versus', cpu: versusCpu, enemyId: versusEnemyId, stageId: versusStage, statMult:1 });
+  }
+  $('btn-versus-start').addEventListener('click', ()=>{
+    if(versusPlayerId && versusEnemyId) startVersusBattle();
+  });
+
+  // ===================================================================
+  // COLLECTION
+  // ===================================================================
+  function renderCollection(){
+    const grid = $('zukan-grid');
+    grid.innerHTML = '';
+    CHAR_ORDER.forEach(id=>{
+      const ch = CHAR_DB[id];
+      const owned = !!state.owned[id];
+      const slot = document.createElement('div');
+      slot.className = 'zukan-slot' + (owned?'':' locked');
+      if(owned){
+        slot.innerHTML = `<div class="zukan-portrait">${portraits[id]}</div>
+          <div class="zukan-name">${ch.name}</div>
+          <div class="char-tags" style="justify-content:center;">
+            <span class="tag stars" style="margin-top:3px;">${starStr(ch.rarity)}</span>
+            <span class="tag" style="margin-top:3px;">Lv.${state.levels[id]||1}</span>
+          </div>`;
+        slot.addEventListener('click', ()=> showDetail(id));
+      } else {
+        slot.innerHTML = `<div class="zukan-lock">？</div>
+          <div class="zukan-name">？？？</div>
+          <div class="tag stars" style="margin-top:3px;">${starStr(ch.rarity)}</div>`;
+      }
+      grid.appendChild(slot);
+    });
+  }
+  function renderItems(){
+    const grid = $('item-grid');
+    if(!grid) return;
+    grid.innerHTML = '';
+    ITEM_ORDER.forEach(id=>{
+      const it = ITEM_DB[id];
+      const count = state.items[id] || 0;
+      const slot = document.createElement('div');
+      slot.className = 'zukan-slot';
+      slot.innerHTML = `<div class="zukan-portrait">${itemPortraits[id]}</div>
+        <div class="zukan-name">${it.name}</div>
+        <div class="tag stars" style="margin-top:3px;">所持：${count}</div>`;
+      grid.appendChild(slot);
+    });
+  }
+  function renderStages(){
+    const grid = $('stage-grid');
+    if(!grid) return;
+    grid.innerHTML = '';
+    STAGE_ORDER.forEach(id=>{
+      const st = STAGE_DB[id];
+      const owned = !!state.stages[id];
+      const slot = document.createElement('div');
+      slot.className = 'zukan-slot' + (owned?'':' locked');
+      if(owned){
+        slot.innerHTML = `<div class="zukan-portrait">${stageSVG(id)}</div>
+          <div class="zukan-name">${st.name}</div>`;
+      } else {
+        slot.innerHTML = `<div class="zukan-lock">？</div><div class="zukan-name">？？？</div>`;
+      }
+      grid.appendChild(slot);
+    });
+  }
+  function showDetail(id){
+    const ch = CHAR_DB[id];
+    const eff = effStats(id);
+    $('detail-stars').textContent = starStr(ch.rarity);
+    $('detail-portrait').innerHTML = portraits[id];
+    $('detail-name').textContent = ch.name;
+    $('detail-tags').outerHTML = `<div style="margin-bottom:2px;">
+        <span class="tag" id="detail-tags" style="margin-right:5px;">${SPECIES_NAME[ch.species]}</span>
+        <span class="tag" style="margin-right:5px;">${TYPE_DB[ch.type].name}</span>
+        <span class="tag">Lv.${eff.level} / ${LEVEL_CAP}</span>
+      </div>`;
+    $('detail-stats-body').innerHTML =
+      `体力：<b>${eff.hp}</b>　攻撃：<b>${eff.atkLo}〜${eff.atkHi}</b><br>
+       ひっさつ：<b>${ch.special.name}</b>（${BUMP.desc(id)}）<br>ショット：<b>${BUMP.shot(id)}</b><br>
+       バトルタイプ：<b>${TYPE_DB[ch.type].name}</b>　${TYPE_DB[ch.type].desc}`;
+    $('detail-desc').textContent = ch.tagline + '　' + ch.desc;
+
+    const itemId = ch.species==='kaiju' ? 'meat' : 'robotpart';
+    const item = ITEM_DB[itemId];
+    const count = state.items[itemId] || 0;
+    const atCap = eff.level >= LEVEL_CAP;
+    const box = $('detail-strengthen');
+    if(atCap){
+      box.innerHTML = `<div style="font-size:.78rem; color:var(--muted); margin-bottom:14px;">すでに最大レベルに達している</div>`;
+    } else {
+      box.innerHTML = `<div style="font-size:.78rem; color:var(--muted); margin-bottom:8px;">${item.name}　所持：${count}</div>
+        <button class="btn gold" id="btn-strengthen" style="width:100%; margin-bottom:14px;" ${count<1?'disabled':''}>パワーアップ！（Lv.${eff.level}→${eff.level+1}）</button>`;
+      $('btn-strengthen').addEventListener('click', ()=>{
+        if((state.items[itemId]||0) < 1) return;
+        state.items[itemId] -= 1;
+        state.levels[id] = (state.levels[id]||1) + 1;
+        save();
+        showDetail(id);
+        renderItems();
+        renderCollection();
+      });
+    }
+    $('overlay-detail').classList.remove('hidden');
+  }
+  $('btn-detail-close').addEventListener('click', ()=> $('overlay-detail').classList.add('hidden'));
+
+  // ===================================================================
+  // SETTINGS / FULL RESET
+  // ===================================================================
+  $('btn-settings').addEventListener('click', ()=> $('overlay-settings').classList.remove('hidden'));
+  $('btn-settings-close').addEventListener('click', ()=> $('overlay-settings').classList.add('hidden'));
+  $('btn-full-reset').addEventListener('click', ()=>{
+    if(!confirm('本当にすべてのセーブデータを削除しますか？\nお金・ずかん・レベル・ストーリー進行・トーナメント記録など、すべてのデータが消えます。')) return;
+    if(!confirm('もう一度確認します。この操作は取り消せません。全データをリセットしてよろしいですか？')) return;
+    try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+    state = defaultState();
+    save();
+    $('overlay-settings').classList.add('hidden');
+    showScreen('hub');
+  });
+
+  // ===================================================================
+  // INIT
+  // ===================================================================
+  load();
+})();
+</script>
+</body>
+</html>
